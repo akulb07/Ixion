@@ -1,5 +1,13 @@
 # Architecture and implementation boundary
 
+Current release: 0.8.0. Historical Milestones 1–2 sections below retain their
+original design rationale. Current scheduling is delivered encoder readings ->
+optional wheel PID -> actuator response -> swept kinematics -> sensor captures ->
+next tick. Sensor noise uses named independent PCG64 streams. EncoderOdometry
+consumes measurement contracts only. Known-map planners use an explicit
+Environment; PurePursuit accepts estimated poses only. The navigation laboratory
+joins them in a separate bounded loop. See progress.md for current validation.
+
 ## Specification analysis
 
 The revised specification's sections 98–103 defined Milestone 1. They
@@ -191,13 +199,13 @@ position or heading drift.
 
 ## Reproducibility and future scheduling
 
-Current prescribed-motion runs contain no random draws. The seed is validated and
+Sensor-free prescribed-motion runs contain no random draws. The seed is validated and
 recorded, with an empty list of stochastic components in metadata. Changing it
 does not change this ideal model. Same inputs on the same software/runtime yield
 identical numerical state sequences. Cross-platform comparisons use stated
 tolerances because libm and floating-point evaluation can differ.
 
-Later each stochastic component receives its own named RNG stream derived from
+Each sensor noise component now receives its own named RNG stream derived from
 the trial seed. Persist the stream allocation scheme/version; one algorithm's
 random draws must not perturb another algorithm's sensor noise. Comparisons use
 paired initial conditions and exogenous seeds, while acknowledging that different
@@ -240,6 +248,5 @@ frame tests, and reproducible collision event/export/CLI tests. Sweeps follow th
 actual kinematic path, never just its endpoint chord. Conservative near-contact
 results are explicitly distinguished from confirmed sampled collisions.
 
-Next add the sensor interface, independent RNG streams, encoders, a simplified
-IMU, and tested ray-cast LiDAR. Add actuator dynamics in their subsequent phase.
-Keep the revised phase order and validation gates for later work.
+Sensors, actuators, PID, odometry, planning and tracking are implemented within
+their documented boundaries. Next add and validate EKF localization.

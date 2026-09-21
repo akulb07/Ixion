@@ -1,10 +1,10 @@
 # RoboForge
 
 A robotics experimentation laboratory built around explicit equations, measured
-results, and reproducible runs. This release completes **Milestone 2**: the tested
-foundation plus physical robot descriptions and circular-footprint collision queries.
-Milestone 3 now adds seeded encoders, a planar IMU, and ray-cast LiDAR; see
-[sensor models](docs/sensors.md) and `python examples/milestone_3/run.py`.
+results, and reproducible runs. Release **0.8.0** implements the mathematical core,
+collision checks, sensors, actuators, PID feedback, encoder odometry, four path
+planners and Pure Pursuit. The navigation laboratory joins these components using
+delivered encoder estimates. See [validated checkpoints](docs/progress.md).
 
 ## What works
 
@@ -17,10 +17,14 @@ Milestone 3 now adds seeded encoders, a planar IMU, and ray-cast LiDAR; see
 - Opt-in conservative collision stopping, including partial-timestep events.
 - Prescribed wheel commands, deterministic trajectory export, and optional plots.
 - Unit, integration, regression, and numerical convergence tests.
+- Seeded encoders, planar IMU and ray-cast LiDAR with noise, dropout and latency.
+- Wheel delay, gain mismatch, deadzone, speed/acceleration limits and response lag.
+- Encoder-only wheel PID, anti-windup, derivative filtering and per-term telemetry.
+- Independent encoder odometry; A*, Dijkstra, RRT, RRT*; Pure Pursuit tracking.
 
-This is an ideal kinematic simulator. Enable `simulation.collision.mode: stop`
+This is a kinematic simulator with optional discrete actuator response. Enable `simulation.collision.mode: stop`
 to stop before contact; the default remains `disabled` for existing configurations.
-Stopping is a geometric policy, not physical impact response. Actuator dynamics, localization, planning, SLAM,
+Stopping is a geometric policy, not physical impact response. EKF localization, mapping, SLAM,
 experiment sweeps, replay, a web frontend, AI, and hardware adapters are not yet
 implemented. Static visualization is deliberately sufficient for this milestone.
 
@@ -36,6 +40,12 @@ python -m pip install -e ".[dev,plot]"
 python -m pytest
 python examples/01_differential_drive/run.py
 python examples/milestone_2/run.py
+python examples/milestone_3/run.py  # sensors
+python examples/milestone_4/run.py  # actuators
+python examples/milestone_5/run.py  # encoder PID
+python examples/milestone_6/run.py  # odometry
+python examples/milestone_7/run.py  # four planners
+python examples/milestone_8/run.py  # encoder-guided navigation
 ```
 
 The demo validates its analytical endpoints and writes `results/foundation/`:

@@ -1,22 +1,24 @@
 # Validated implementation checkpoints
 
-The user has authorized continuing across milestones in order as usage permits.
-Each checkpoint must pass tests and its demonstration before proceeding.
+The user authorized continued milestone work as usage permits. Each checkpoint
+passes its tests and demonstration before the next begins.
 
 | Milestone | Implemented | Validation |
 |---|---|---|
 | 1 | Planar math, configuration, clock, ideal simulator | 73 tests, 110 subtests |
 | 2 | Physical description, frames, static/swept collision | 117 tests, 153 subtests |
-| 3 | Seeded encoders, IMU, LiDAR, timestamped readings | 131 tests, 157 subtests; 528-reading repeatable demo |
+| 3 | Seeded encoders, IMU, LiDAR, timestamped readings | 131 tests, 157 subtests; repeatable 528-reading demo |
+| 4 | Delayed, asymmetric, limited wheel response | 144 tests, 157 subtests; 450-step demo |
+| 5 | Encoder-only PID, anti-windup, derivative filtering | 155 tests, 157 subtests; wheel errors below 0.00008 rad/s |
+| 6 | Encoder odometry, dropout gaps, stream checks | 165 tests, 157 subtests; calibration drift demonstration |
+| 7 | Dijkstra, A*, seeded RRT, fixed-radius RRT* | 179 tests, 157 subtests; all demo paths swept collision-checked |
+| 8 | Pure Pursuit and delivered-encoder navigation lab | 184 tests, 157 subtests; repeatable collision-free arrival in 30.26 s |
 
-Current sensor model limitations and units are documented in sensors.md.
-Next: actuator dynamics, then PID, odometry, planning, tracking, localization,
-mapping and the remaining research/visualization layers in specification order.
+Next: EKF localization, mapping, SLAM, experiment engine, faults, benchmarks,
+advanced UI, AI and hardware adapters in specification order.
 
-Milestone 4: discrete wheel actuators, delay, asymmetry and limits; 144 tests and 157 subtests pass. Repeatable 450-step actuator demonstration. See actuators.md.
-
-Milestone 5: encoder-only wheel PID, derivative filtering, conditional anti-windup, telemetry; 155 tests and 157 subtests pass. 399 feedback updates, final wheel errors below 0.00008 rad/s in the deterministic gain-mismatch demo. See control.md.
-
-Milestone 6: independent encoder odometry with dropout-gap handling and stream validation; 165 tests and 157 subtests pass. Calibrated endpoint error 0.000000713 m; +5% radius calibration error gives 0.1298 m endpoint drift in the demo. See odometry.md.
-
-Milestone 7: Dijkstra, A*, seeded RRT and fixed-radius RRT*; 179 tests and 157 subtests pass. All four demo paths swept collision-checked. See planning.md.
+Per-model documents explain assumptions and limitations. The product concept
+image is a target, not an implemented web interface. The navigation laboratory is
+an explicit component integration example; the CLI supports prescribed wheel
+commands and optional wheel PID, not a navigation scenario schema yet. Arrival
+means entering the configured 5 cm tolerance, not a physically settled stop.

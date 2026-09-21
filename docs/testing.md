@@ -54,6 +54,12 @@ environment. A dependency snapshot accompanies the deliverable for that runtime.
 
 ## Gate for later phases
 
+Release 0.8.0 additionally validates sensor timing/noise, ray intersections,
+analytical actuator response and positional convergence, PID saturation recovery,
+encoder-only gain correction, odometry arcs/dropouts, A*/Dijkstra cost agreement,
+seeded sampling reproducibility and RRT* budget-extension behavior, and bounded
+Pure Pursuit convergence. Demonstrations export actual measured data.
+
 Add no algorithm merely because its demo looks correct. Explain its model first,
 test analytical cases and failure modes, connect it to the existing interfaces,
 run the suite, demonstrate a reproducible example, and document limitations.
