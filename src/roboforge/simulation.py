@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from roboforge.actuators import ActuatorSample, WheelActuators
 from roboforge.config import RunConfig
 from roboforge.core import finite, positive
 from roboforge.geometry import Pose2
@@ -70,6 +71,7 @@ class SimulationResult:
     collisions: tuple[CollisionEvent, ...] = ()
     motions: tuple[KinematicMotion, ...] = ()
     readings: tuple[SensorReading, ...] = ()
+    actuator_samples: tuple[ActuatorSample, ...] = ()
 
 
 class Simulator:
@@ -89,14 +91,19 @@ class Simulator:
         state = robot.initial_state()
         states = [state]
         motions = []
+        actuators = WheelActuators(self.config.actuators)
+        actuator_samples = []
         sensors = SensorSuite(self.config) if self.config.sensors else None
         if sensors:
             sensors.capture_initial()
         collision = self.config.simulation.collision
         world = CollisionWorld(self.config.environment) if collision.mode == "stop" else None
         for command in self.config.commands:
-            wheels = WheelSpeeds(command.left, command.right)
+            requested = WheelSpeeds(command.left, command.right)
             for _ in range(command.steps):
+                actuator_sample = actuators.step(requested, clock.dt, clock.time)
+                actuator_samples.append(actuator_sample)
+                wheels = actuator_sample.applied
                 motion = KinematicMotion(
                     state.pose,
                     robot.kinematics,
@@ -143,7 +150,7 @@ class Simulator:
                             clock.time_at_fraction(middle),
                             motion.pose_at(middle),
                             sweep.reason,
-                            wheels,
+                            requested,
                             sweep.report,
                             sweep.queries,
                         )
@@ -158,6 +165,7 @@ class Simulator:
                             )
                             if sensors
                             else (),
+                            tuple(actuator_samples),
                         )
                 if sensors:
                     sensors.advance(motion, start_time=clock.time)
@@ -174,4 +182,5 @@ class Simulator:
             readings=tuple(sorted(sensors.readings, key=lambda r: (r.capture_time, r.sensor)))
             if sensors
             else (),
+            actuator_samples=tuple(actuator_samples),
         )

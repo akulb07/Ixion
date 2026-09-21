@@ -158,6 +158,20 @@ class NoiseConfig(Schema):
     bias_walk: Nonnegative = 0.0
 
 
+class WheelActuatorConfig(Schema):
+    max_speed: Positive | None = None
+    max_acceleration: Positive | None = None
+    time_constant: Nonnegative = 0.0
+    deadzone: Nonnegative = 0.0
+    gain: Positive = 1.0
+
+
+class ActuatorConfig(Schema):
+    delay_steps: Annotated[int, Field(strict=True, ge=0)] = 0
+    left: WheelActuatorConfig = WheelActuatorConfig()
+    right: WheelActuatorConfig = WheelActuatorConfig()
+
+
 class SensorBase(Schema):
     name: SensorName
     rate_hz: Positive = 10.0
@@ -209,6 +223,7 @@ class RunConfig(Schema):
     simulation: SimulationConfig = SimulationConfig()
     commands: tuple[WheelCommand, ...] = Field(min_length=1)
     sensors: tuple[SensorConfig, ...] = ()
+    actuators: ActuatorConfig = ActuatorConfig()
 
     @model_validator(mode="after")
     def check_run(self) -> RunConfig:

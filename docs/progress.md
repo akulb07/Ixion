@@ -12,3 +12,5 @@ Each checkpoint must pass tests and its demonstration before proceeding.
 Current sensor model limitations and units are documented in sensors.md.
 Next: actuator dynamics, then PID, odometry, planning, tracking, localization,
 mapping and the remaining research/visualization layers in specification order.
+
+Milestone 4: discrete wheel actuators, delay, asymmetry and limits; 144 tests and 157 subtests pass. Repeatable 450-step actuator demonstration. See actuators.md.

@@ -30,6 +30,8 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         "stochastic_components": [sensor.name for sensor in result.config.sensors],
         "rng_scheme": "sha256-named-pcg64-v1",
         "sensor_readings": len(result.readings),
+        "actuator_model": "discrete-wheel-response-v1",
+        "actuator_samples": len(result.actuator_samples),
         "integrator": result.config.simulation.integrator,
         "dt_s": result.config.simulation.dt,
         "steps": len(result.states) - 1,
@@ -50,6 +52,12 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
     with (directory / "sensors.jsonl").open("w", encoding="utf-8") as stream:
         for reading in result.readings:
             stream.write(reading.model_dump_json() + "\n")
+    (directory / "actuators.json").write_text(
+        json.dumps(
+            [asdict(sample) for sample in result.actuator_samples], indent=2, allow_nan=False
+        ),
+        encoding="utf-8",
+    )
     (directory / "motion_segments.json").write_text(
         json.dumps(
             [
