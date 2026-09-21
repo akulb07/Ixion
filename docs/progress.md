@@ -18,3 +18,5 @@ Milestone 4: discrete wheel actuators, delay, asymmetry and limits; 144 tests an
 Milestone 5: encoder-only wheel PID, derivative filtering, conditional anti-windup, telemetry; 155 tests and 157 subtests pass. 399 feedback updates, final wheel errors below 0.00008 rad/s in the deterministic gain-mismatch demo. See control.md.
 
 Milestone 6: independent encoder odometry with dropout-gap handling and stream validation; 165 tests and 157 subtests pass. Calibrated endpoint error 0.000000713 m; +5% radius calibration error gives 0.1298 m endpoint drift in the demo. See odometry.md.
+
+Milestone 7: Dijkstra, A*, seeded RRT and fixed-radius RRT*; 179 tests and 157 subtests pass. All four demo paths swept collision-checked. See planning.md.
