@@ -14,3 +14,5 @@ Next: actuator dynamics, then PID, odometry, planning, tracking, localization,
 mapping and the remaining research/visualization layers in specification order.
 
 Milestone 4: discrete wheel actuators, delay, asymmetry and limits; 144 tests and 157 subtests pass. Repeatable 450-step actuator demonstration. See actuators.md.
+
+Milestone 5: encoder-only wheel PID, derivative filtering, conditional anti-windup, telemetry; 155 tests and 157 subtests pass. 399 feedback updates, final wheel errors below 0.00008 rad/s in the deterministic gain-mismatch demo. See control.md.

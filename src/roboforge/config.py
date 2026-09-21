@@ -172,6 +172,29 @@ class ActuatorConfig(Schema):
     right: WheelActuatorConfig = WheelActuatorConfig()
 
 
+class PIDConfig(Schema):
+    kp: Nonnegative = 1.0
+    ki: Nonnegative = 0.0
+    kd: Nonnegative = 0.0
+    output_min: Real = -20.0
+    output_max: Real = 20.0
+    derivative_time_constant: Nonnegative = 0.02
+    integral_limit: Nonnegative = 20.0
+
+    @model_validator(mode="after")
+    def output_order(self):
+        if self.output_min >= self.output_max:
+            raise ValueError("PID output_min must be below output_max")
+        return self
+
+
+class WheelControllerConfig(Schema):
+    encoder: SensorName = "encoders"
+    left: PIDConfig = PIDConfig()
+    right: PIDConfig = PIDConfig()
+    feedforward: Nonnegative = 1.0
+
+
 class SensorBase(Schema):
     name: SensorName
     rate_hz: Positive = 10.0
@@ -224,6 +247,7 @@ class RunConfig(Schema):
     commands: tuple[WheelCommand, ...] = Field(min_length=1)
     sensors: tuple[SensorConfig, ...] = ()
     actuators: ActuatorConfig = ActuatorConfig()
+    wheel_controller: WheelControllerConfig | None = None
 
     @model_validator(mode="after")
     def check_run(self) -> RunConfig:
@@ -239,6 +263,11 @@ class RunConfig(Schema):
             names.add(sensor.name)
             if hasattr(sensor, "frame") and sensor.frame not in frames:
                 raise ValueError(f"sensor {sensor.name} references missing frame {sensor.frame}")
+        if self.wheel_controller is not None and not any(
+            isinstance(sensor, EncoderConfig) and sensor.name == self.wheel_controller.encoder
+            for sensor in self.sensors
+        ):
+            raise ValueError("wheel controller requires its named encoder sensor")
         return self
 
 

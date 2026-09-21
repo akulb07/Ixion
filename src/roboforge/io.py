@@ -32,6 +32,7 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         "sensor_readings": len(result.readings),
         "actuator_model": "discrete-wheel-response-v1",
         "actuator_samples": len(result.actuator_samples),
+        "control_samples": len(result.control_samples),
         "integrator": result.config.simulation.integrator,
         "dt_s": result.config.simulation.dt,
         "steps": len(result.states) - 1,
@@ -55,6 +56,12 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
     (directory / "actuators.json").write_text(
         json.dumps(
             [asdict(sample) for sample in result.actuator_samples], indent=2, allow_nan=False
+        ),
+        encoding="utf-8",
+    )
+    (directory / "control.json").write_text(
+        json.dumps(
+            [asdict(sample) for sample in result.control_samples], indent=2, allow_nan=False
         ),
         encoding="utf-8",
     )
