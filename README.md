@@ -3,6 +3,8 @@
 A robotics experimentation laboratory built around explicit equations, measured
 results, and reproducible runs. This release completes **Milestone 2**: the tested
 foundation plus physical robot descriptions and circular-footprint collision queries.
+Milestone 3 now adds seeded encoders, a planar IMU, and ray-cast LiDAR; see
+[sensor models](docs/sensors.md) and `python examples/milestone_3/run.py`.
 
 ## What works
 
@@ -18,7 +20,7 @@ foundation plus physical robot descriptions and circular-footprint collision que
 
 This is an ideal kinematic simulator. Enable `simulation.collision.mode: stop`
 to stop before contact; the default remains `disabled` for existing configurations.
-Stopping is a geometric policy, not physical impact response. Sensors, actuator dynamics, localization, planning, SLAM,
+Stopping is a geometric policy, not physical impact response. Actuator dynamics, localization, planning, SLAM,
 experiment sweeps, replay, a web frontend, AI, and hardware adapters are not yet
 implemented. Static visualization is deliberately sufficient for this milestone.
 

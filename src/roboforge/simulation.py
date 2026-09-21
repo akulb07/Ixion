@@ -11,6 +11,8 @@ from roboforge.geometry import Pose2
 from roboforge.physics import CollisionReport, CollisionWorld, KinematicMotion
 from roboforge.robot import DifferentialDriveRobot, RobotState
 from roboforge.robotics import BodyTwist2, WheelSpeeds
+from roboforge.sensors import SensorReading
+from roboforge.sensors.suite import SensorSuite
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +69,7 @@ class SimulationResult:
     status: Literal["completed", "collision"] = "completed"
     collisions: tuple[CollisionEvent, ...] = ()
     motions: tuple[KinematicMotion, ...] = ()
+    readings: tuple[SensorReading, ...] = ()
 
 
 class Simulator:
@@ -86,6 +89,9 @@ class Simulator:
         state = robot.initial_state()
         states = [state]
         motions = []
+        sensors = SensorSuite(self.config) if self.config.sensors else None
+        if sensors:
+            sensors.capture_initial()
         collision = self.config.simulation.collision
         world = CollisionWorld(self.config.environment) if collision.mode == "stop" else None
         for command in self.config.commands:
@@ -128,6 +134,8 @@ class Simulator:
                                     self.config.simulation.integrator,
                                 )
                             )
+                            if sensors:
+                                sensors.advance(motions[-1], start_time=clock.time)
                         event = CollisionEvent(
                             clock.tick + 1,
                             stop_time,
@@ -140,12 +148,30 @@ class Simulator:
                             sweep.queries,
                         )
                         return SimulationResult(
-                            self.config, tuple(states), "collision", (event,), tuple(motions)
+                            self.config,
+                            tuple(states),
+                            "collision",
+                            (event,),
+                            tuple(motions),
+                            tuple(
+                                sorted(sensors.readings, key=lambda r: (r.capture_time, r.sensor))
+                            )
+                            if sensors
+                            else (),
                         )
+                if sensors:
+                    sensors.advance(motion, start_time=clock.time)
                 clock = clock.advanced()
                 state = robot.step(
                     state, wheels, clock.dt, clock.time, self.config.simulation.integrator
                 )
                 states.append(state)
                 motions.append(motion)
-        return SimulationResult(self.config, tuple(states), motions=tuple(motions))
+        return SimulationResult(
+            self.config,
+            tuple(states),
+            motions=tuple(motions),
+            readings=tuple(sorted(sensors.readings, key=lambda r: (r.capture_time, r.sensor)))
+            if sensors
+            else (),
+        )

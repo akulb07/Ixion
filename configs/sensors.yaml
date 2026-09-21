@@ -1,0 +1,28 @@
+name: seeded_sensor_laboratory
+seed: 42
+robot:
+  initial_pose: {x: 2.0, y: 2.0, theta: 0.0}
+environment:
+  width: 10.0
+  height: 8.0
+  obstacles:
+    - {type: rectangle, x: 5.0, y: 3.5, width: 1.0, height: 2.0}
+    - {type: circle, x: 7.0, y: 2.0, radius: 0.6}
+simulation: {dt: 0.01, collision: {mode: stop}}
+sensors:
+  - type: encoder
+    rate_hz: 50.0
+    latency: 0.02
+    noise: {stddev: 0.002, dropout: 0.01}
+  - type: imu
+    rate_hz: 50.0
+    gyro_noise: {stddev: 0.01, bias: 0.015, bias_walk: 0.002}
+    acceleration_noise: {stddev: 0.02}
+  - type: lidar
+    rate_hz: 5.0
+    rays: 90
+    max_range: 12.0
+    noise: {stddev: 0.02, dropout: 0.05}
+commands:
+  - {left: 5.0, right: 5.0, steps: 200}
+  - {left: 3.0, right: 6.0, steps: 300}

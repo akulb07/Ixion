@@ -27,7 +27,9 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
         "seed": result.config.seed,
-        "stochastic_components": [],
+        "stochastic_components": [sensor.name for sensor in result.config.sensors],
+        "rng_scheme": "sha256-named-pcg64-v1",
+        "sensor_readings": len(result.readings),
         "integrator": result.config.simulation.integrator,
         "dt_s": result.config.simulation.dt,
         "steps": len(result.states) - 1,
@@ -45,6 +47,9 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         json.dumps([asdict(event) for event in result.collisions], indent=2, allow_nan=False),
         encoding="utf-8",
     )
+    with (directory / "sensors.jsonl").open("w", encoding="utf-8") as stream:
+        for reading in result.readings:
+            stream.write(reading.model_dump_json() + "\n")
     (directory / "motion_segments.json").write_text(
         json.dumps(
             [
