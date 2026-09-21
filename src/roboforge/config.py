@@ -1,0 +1,159 @@
+"""Strict, immutable configuration boundary for the Milestone 1 simulator."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Annotated, Literal
+
+import yaml
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+
+from roboforge.core import finite
+from roboforge.geometry import Pose2
+
+
+def _real(value: object) -> float:
+    return finite(value, "value")
+
+
+Real = Annotated[float, BeforeValidator(_real)]
+Positive = Annotated[Real, Field(gt=0)]
+Steps = Annotated[int, Field(strict=True, gt=0)]
+
+
+class Schema(BaseModel):
+    """Reject misspelled fields and assignment; collection fields use tuples."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
+
+
+class PoseConfig(Schema):
+    x: Real = 0.0
+    y: Real = 0.0
+    theta: Real = 0.0
+
+    def to_pose(self) -> Pose2:
+        return Pose2(self.x, self.y, self.theta)
+
+
+class RobotConfig(Schema):
+    name: str = Field(default="differential_bot", min_length=1)
+    wheel_radius: Positive = 0.05
+    wheel_separation: Positive = 0.30
+    footprint_radius: Positive = 0.20
+    initial_pose: PoseConfig = PoseConfig()
+
+
+class Rectangle(Schema):
+    """Axis-aligned rectangle; x/y identify its lower-left corner."""
+
+    type: Literal["rectangle"] = "rectangle"
+    x: Real
+    y: Real
+    width: Positive
+    height: Positive
+
+
+class Circle(Schema):
+    """Circle; x/y identify its centre."""
+
+    type: Literal["circle"] = "circle"
+    x: Real
+    y: Real
+    radius: Positive
+
+
+Obstacle = Annotated[Rectangle | Circle, Field(discriminator="type")]
+
+
+class Environment(Schema):
+    """Passive bounded world representation; no collision queries yet."""
+
+    name: str = Field(default="empty_room", min_length=1)
+    width: Positive = 10.0
+    height: Positive = 10.0
+    obstacles: tuple[Obstacle, ...] = ()
+
+    @model_validator(mode="after")
+    def check_obstacle_bounds(self) -> Environment:
+        for index, obstacle in enumerate(self.obstacles):
+            if isinstance(obstacle, Rectangle):
+                bounds = (
+                    obstacle.x,
+                    obstacle.y,
+                    obstacle.x + obstacle.width,
+                    obstacle.y + obstacle.height,
+                )
+            else:
+                bounds = (
+                    obstacle.x - obstacle.radius,
+                    obstacle.y - obstacle.radius,
+                    obstacle.x + obstacle.radius,
+                    obstacle.y + obstacle.radius,
+                )
+            if not (
+                0 <= bounds[0] <= bounds[2] <= self.width
+                and 0 <= bounds[1] <= bounds[3] <= self.height
+            ):
+                raise ValueError(f"obstacle {index} must fit inside environment bounds")
+        return self
+
+
+class WheelCommand(Schema):
+    """Piecewise constant angular wheel rates applied for an integer step count."""
+
+    left: Real
+    right: Real
+    steps: Steps
+
+
+class SimulationConfig(Schema):
+    dt: Positive = 0.01
+    integrator: Literal["exact", "euler"] = "exact"
+
+
+class RunConfig(Schema):
+    schema_version: Literal[1] = 1
+    name: str = Field(default="foundation_demo", min_length=1)
+    seed: Annotated[int, Field(strict=True, ge=0)] = 42
+    robot: RobotConfig = RobotConfig()
+    environment: Environment = Environment()
+    simulation: SimulationConfig = SimulationConfig()
+    commands: tuple[WheelCommand, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def check_run(self) -> RunConfig:
+        pose = self.robot.initial_pose
+        if not (0 <= pose.x <= self.environment.width and 0 <= pose.y <= self.environment.height):
+            raise ValueError("initial robot centre must lie inside environment bounds")
+        finite(sum(command.steps for command in self.commands) * self.simulation.dt, "run duration")
+        return self
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """Safe YAML loading that rejects duplicate keys instead of silently overriding."""
+
+
+def _unique_mapping(loader: _UniqueKeyLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
+    mapping = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if not isinstance(key, str):
+            raise ValueError("configuration mapping keys must be strings")
+        if key in mapping:
+            raise ValueError(f"duplicate configuration key: {key}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _unique_mapping)
+
+
+def load_config(path: str | Path) -> RunConfig:
+    """Load YAML or JSON safely and report file/field context for invalid inputs."""
+    path = Path(path)
+    try:
+        data = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
+        return RunConfig.model_validate(data)
+    except (OSError, ValueError, yaml.YAMLError, RecursionError) as exc:
+        raise ValueError(f"Invalid configuration {path}: {exc}") from exc

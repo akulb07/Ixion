@@ -1,0 +1,23 @@
+schema_version: 1
+name: straight_then_rotate
+seed: 42 # Recorded for future stochastic models; this model has no randomness.
+robot:
+  name: differential_bot
+  wheel_radius: 0.05
+  wheel_separation: 0.30
+  footprint_radius: 0.20
+  initial_pose: {x: 1.0, y: 1.0, theta: 0.0}
+environment:
+  name: foundation_room
+  width: 3.0
+  height: 3.0
+  obstacles:
+    - {type: rectangle, x: 0.3, y: 2.0, width: 0.5, height: 0.6}
+    - {type: circle, x: 2.4, y: 2.3, radius: 0.25}
+simulation:
+  dt: 0.01
+  integrator: exact
+commands:
+  - {left: 1.0, right: 1.0, steps: 1000}
+  - {left: -1.0, right: 1.0, steps: 1000}
+
