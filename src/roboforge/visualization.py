@@ -6,6 +6,7 @@ import numpy as np
 
 from roboforge.config import Circle
 from roboforge.simulation import SimulationResult
+from roboforge.trajectory import sample_trajectory
 
 
 def plot_trajectory(result: SimulationResult, path: str | Path) -> Path:
@@ -40,10 +41,10 @@ def plot_trajectory(result: SimulationResult, path: str | Path) -> Path:
             )
         world.add_patch(patch)
     data = np.array(
-        [[state.time, state.pose.x, state.pose.y, state.pose.theta] for state in result.states]
+        [[time, pose.x, pose.y, pose.theta] for time, pose in sample_trajectory(result)]
     )
     world.plot(
-        data[:, 1], data[:, 2], color="#087f8c", linewidth=2, label="Ground-truth trajectory"
+        data[:, 1], data[:, 2], color="#087f8c", linewidth=2, label="Kinematic path (resampled)"
     )
     sample = data[np.unique(np.linspace(0, len(data) - 1, min(12, len(data))).astype(int))]
     world.quiver(
@@ -62,6 +63,17 @@ def plot_trajectory(result: SimulationResult, path: str | Path) -> Path:
         data[-1, 1], data[-1, 2], color="#dc2626", s=60, marker="x", label="End", zorder=6
     )
     last = result.states[-1]
+    for event in result.collisions:
+        point = event.report.nearest.point_on_obstacle
+        world.scatter(
+            point.x,
+            point.y,
+            marker="*",
+            s=150,
+            color="#d97706",
+            zorder=8,
+            label="Contact candidate",
+        )
     world.quiver(
         last.pose.x,
         last.pose.y,
@@ -83,7 +95,7 @@ def plot_trajectory(result: SimulationResult, path: str | Path) -> Path:
             linewidth=1.5,
         )
     )
-    # Include out-of-bounds trajectories; do not conceal the absence of collision.
+    # Include out-of-bounds trajectories in disabled mode as well.
     world.set(
         xlim=(min(0, data[:, 1].min() - 0.3), max(environment.width, data[:, 1].max() + 0.3)),
         ylim=(min(0, data[:, 2].min() - 0.3), max(environment.height, data[:, 2].max() + 0.3)),
@@ -93,21 +105,14 @@ def plot_trajectory(result: SimulationResult, path: str | Path) -> Path:
         aspect="equal",
     )
     world.legend(loc="upper right", fontsize=8)
-    # Wrapped samples alone cannot disambiguate rotations greater than pi/step.
-    # Show canonical values for those runs instead of silently aliasing rotation.
-    max_rotation = max(
-        (abs(state.omega) * result.config.simulation.dt for state in result.states[1:]), default=0.0
-    )
-    continuous = max_rotation < np.pi
-    angles = np.unwrap(data[:, 3]) if continuous else data[:, 3]
-    angle_label = "Unwrapped heading (rad)" if continuous else "Wrapped heading (rad)"
-    heading.plot(data[:, 0], angles, color="#7c3aed", linewidth=2)
-    heading.set(xlabel="Simulation time (s)", ylabel=angle_label, title="Orientation")
+    # Segment resampling limits angular increments, making unwrapping unambiguous.
+    heading.plot(data[:, 0], np.unwrap(data[:, 3]), color="#7c3aed", linewidth=2)
+    heading.set(xlabel="Simulation time (s)", ylabel="Unwrapped heading (rad)", title="Orientation")
     for axis in (world, heading):
         axis.grid(alpha=0.2)
     figure.suptitle(f"RoboForge | {result.config.name}", fontsize=15, fontweight="bold")
     figure.supxlabel(
-        "Ideal kinematics · prescribed wheel commands · geometry only, collision disabled",
+        f"Ideal kinematics · collision mode: {result.config.simulation.collision.mode} · status: {result.status}",
         fontsize=9,
     )
     figure.savefig(path, dpi=150)

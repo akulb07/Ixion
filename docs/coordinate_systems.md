@@ -10,7 +10,8 @@ and angles radians. Mass/force, when implemented, will use kilograms/Newtons.
 The base origin is the midpoint of the wheel axle. Static nominal mounts are:
 left wheel `(0, +L/2)`, right wheel `(0, -L/2)`; LiDAR and IMU offsets will be
 declared relative to base. The math demo/tests demonstrate these frame names;
-there are no sensor models or general-purpose frame graph in this milestone.
+Milestone 2 provides these transforms through the robot's `frame_transforms` API.
+There are no sensor models or general-purpose frame graph yet.
 
 ## Vectors and poses
 
@@ -88,4 +89,3 @@ pose composition, inverse round trips, determinant checks, invalid matrix inputs
 and 100 seeded frame chains test these formulas independently. Composition is
 also checked against NumPy homogeneous matrix multiplication. See
 `tests/unit/test_geometry.py` and `tests/integration/test_math_pipeline.py`.
-

@@ -1,0 +1,23 @@
+schema_version: 1
+name: thin_wall_swept_collision
+seed: 42
+robot:
+  model: differential_drive
+  wheel_radius: 0.05
+  wheel_separation: 0.30
+  footprint_radius: 0.20
+  body_mass: 10.0
+  wheel_mass: 0.25
+  initial_pose: {x: 1.0, y: 3.0, theta: 0.0}
+environment:
+  name: thin_wall_room
+  width: 10.0
+  height: 6.0
+  obstacles:
+    - {type: rectangle, x: 5.0, y: 2.0, width: 0.02, height: 2.0}
+simulation:
+  dt: 2.0 # Deliberately large: both step endpoints would be clear.
+  integrator: exact
+  collision: {mode: stop, spatial_tolerance: 0.000001, max_queries: 100000}
+commands:
+  - {left: 80.0, right: 80.0, steps: 1}

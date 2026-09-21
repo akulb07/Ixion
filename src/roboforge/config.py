@@ -1,7 +1,8 @@
-"""Strict, immutable configuration boundary for the Milestone 1 simulator."""
+"""Strict, immutable robot, world and kinematic simulation configuration."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -36,12 +37,36 @@ class PoseConfig(Schema):
         return Pose2(self.x, self.y, self.theta)
 
 
+class FrameMount(Schema):
+    """A static named mount in the robot base frame; not a sensor model."""
+
+    name: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_]*$")
+    pose: PoseConfig = PoseConfig()
+
+
 class RobotConfig(Schema):
+    model: Literal["differential_drive"] = "differential_drive"
     name: str = Field(default="differential_bot", min_length=1)
     wheel_radius: Positive = 0.05
     wheel_separation: Positive = 0.30
     footprint_radius: Positive = 0.20
     initial_pose: PoseConfig = PoseConfig()
+    body_mass: Positive = 10.0
+    wheel_mass: Positive = 0.25
+    body_yaw_inertia: Positive | None = None
+    mounts: tuple[FrameMount, ...] = (
+        FrameMount(name="lidar", pose=PoseConfig(x=0.1)),
+        FrameMount(name="imu"),
+    )
+
+    @model_validator(mode="after")
+    def check_mount_names(self) -> RobotConfig:
+        names = {"world", "base", "left_wheel", "right_wheel"}
+        for mount in self.mounts:
+            if mount.name in names:
+                raise ValueError(f"duplicate or reserved mount name: {mount.name}")
+            names.add(mount.name)
+        return self
 
 
 class Rectangle(Schema):
@@ -67,7 +92,7 @@ Obstacle = Annotated[Rectangle | Circle, Field(discriminator="type")]
 
 
 class Environment(Schema):
-    """Passive bounded world representation; no collision queries yet."""
+    """Immutable world description; geometry queries live in CollisionWorld."""
 
     name: str = Field(default="empty_room", min_length=1)
     width: Positive = 10.0
@@ -107,9 +132,18 @@ class WheelCommand(Schema):
     steps: Steps
 
 
+class CollisionConfig(Schema):
+    """Opt-in conservative swept collision checking, in metres."""
+
+    mode: Literal["disabled", "stop"] = "disabled"
+    spatial_tolerance: Positive = 1e-6
+    max_queries: Steps = 100000
+
+
 class SimulationConfig(Schema):
     dt: Positive = 0.01
     integrator: Literal["exact", "euler"] = "exact"
+    collision: CollisionConfig = CollisionConfig()
 
 
 class RunConfig(Schema):
@@ -147,6 +181,13 @@ def _unique_mapping(loader: _UniqueKeyLoader, node: yaml.MappingNode, deep: bool
 
 
 _UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _unique_mapping)
+# PyYAML's YAML-1.1 resolver treats JSON numbers such as 1e-6 as strings.
+# Resolve unquoted exponent notation locally; quoted numeric strings stay invalid.
+_UniqueKeyLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:float",
+    re.compile(r"^[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)[eE][-+]?[0-9]+$"),
+    list("-+0123456789."),
+)
 
 
 def load_config(path: str | Path) -> RunConfig:

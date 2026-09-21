@@ -2,11 +2,16 @@
 
 ## Specification analysis
 
-The revised specification's sections 98–103 define the current milestone. They
+The revised specification's sections 98–103 defined Milestone 1. They
 expand the earlier math-only milestone with configuration, robot state, a clock,
 an environment, a simple simulator, and visualization. That revised boundary
 takes precedence. The long-term platform remains a research system; building
 all its algorithm layers now would prevent independent validation.
+
+The user subsequently authorized the next proposed milestone: physical robot
+descriptions and circular-footprint collision queries. Milestone 2 adds that
+bounded scope, with optional conservative simulation stopping. Sensors and force
+dynamics remain future phases; the original validated equations are retained.
 
 The first implementation must prove the chain from configuration to numerical
 model to trajectory to measured analytical error. It must establish interfaces
@@ -46,12 +51,18 @@ YAML/JSON -> RunConfig -> Simulator -> DifferentialDriveRobot -> kinematics
                        SimulationClock     RobotState
                               |                |
                               +-> SimulationResult -> CSV / JSON / matplotlib
+
+Environment -> CollisionWorld -> signed clearance / swept interval checks
+                                   |
+Simulator -> KinematicMotion -------+-> optional terminal collision event
 ```
 
 `geometry` and `robotics` are pure numerical modules. `config` is the validated
 boundary. `Simulator.run()` constructs fresh runtime state on every call.
 `SimulationClock` supplies all sample timestamps. Immutable results can be
-exported or plotted after execution. No API server, database, asynchronous event
+exported or plotted after execution. A collision can interrupt a tick at a clock-
+derived fractional time. Results retain executed motion segments, allowing plots
+to reconstruct curved paths between sparse state samples. No API server, database, asynchronous event
 bus, plugin registry, or frontend is needed to validate this foundation.
 
 ## Repository structure
@@ -63,9 +74,11 @@ roboforge/
     core/                  scalar validation and angle conventions
     geometry/              Vector2, Pose2, Transform2
     robotics/              differential-drive mathematical model
+    physics/               signed clearance and conservative swept collision
     config.py              schemas and YAML/JSON parsing
     robot.py               ground-truth state and ideal robot
     simulation.py          clock, runner, result
+    trajectory.py          reconstruction from recorded ideal motion segments
     io.py                  foundation exports
     visualization.py       optional static plotting
     cli.py                 validate/simulate entry points
@@ -73,6 +86,7 @@ roboforge/
   examples/
     milestone_1.py          mathematical demonstration
     01_differential_drive/run.py
+    milestone_2/run.py
   tests/{unit,integration,regression,numerical}/
   docs/
   scripts/test.py
@@ -83,7 +97,7 @@ This is one distribution with a `src` layout rather than many separately built
 while retaining import boundaries. Each module can become a directory when it
 has multiple implementations. Do not create empty packages to imply features.
 
-Later add `physics`, `sensors`, `actuators`, `estimation`, `localization`,
+Later add `sensors`, `actuators`, `estimation`, `localization`,
 `mapping`, `planning`, `control`, `experiments`, and `metrics` under this namespace.
 Split distributions only if independent release/deployment requirements emerge.
 Add `apps/backend` and `apps/frontend` when the service/UI phase begins; the thin
@@ -104,6 +118,10 @@ when there are real artifacts to store there.
 | `load_config(path)` | YAML or JSON | Frozen `RunConfig`; actionable validation errors |
 | `DifferentialDriveRobot.step(...)` | State, commands, dt, clock timestamp | New ground-truth `RobotState` |
 | `Simulator.run()` | Constructor-supplied `RunConfig` | Immutable `SimulationResult` |
+| `CollisionWorld.query(centre,radius)` | Circular footprint | Signed clearance, contacts, surface witnesses/normals |
+| `CollisionWorld.sweep(motion,radius)` | Exact/Euler kinematic segment | Certified clear or earliest unresolved/contact interval |
+| `DifferentialDriveRobot.frame_transforms(pose)` | World-from-base pose | World-from-base/wheels/configured mounts |
+| `sample_trajectory(result)` | Recorded ideal motion segments | Resampled display poses, distinct from telemetry |
 | `save_result` / `plot_trajectory` | Result + path | Exported artifacts |
 
 ### Future contracts (design only, not placeholder implementations)
@@ -199,7 +217,7 @@ recorded state/events without rerunning stochastic logic. Rerun is a separate ac
 | Ground truth leaks | Distinct state/reading/estimate types; no world handle for estimators |
 | Near-straight integration cancellation | Stable sinc formulation; tests at tiny yaw rates |
 | Timer drift and latency ambiguity | Integer ticks; separate capture/delivery timestamps |
-| Fake physical realism | Label ideal commands, omitted inertia and disabled collision |
+| Fake physical realism | Label ideal commands, descriptive mass properties and geometric stop policy |
 | Numerical plots hiding failures | Export actual data; never substitute successful trajectories |
 | Euler accuracy assumed exact | Demonstrate first-order convergence and retain integrator metadata |
 | Tunnelling through obstacles | Add swept-footprint tests before claiming collision correctness |
@@ -216,9 +234,12 @@ The current tests cover deterministic simulation, exact references, Euler
 convergence, transforms and inverses, immutable state, config errors, export/reload,
 CLI behavior and a real plot. No tests imply navigation or sensor functionality.
 
-Next, formalize physical robot configuration and environment geometry APIs, then
-implement circular-footprint collision queries (including contact, clearance,
-boundary cases and swept motion) with independent tests. Add actuator dynamics
-and sensors only in their subsequent approved phases. Keep the revised phase
-order for later work and do not start another milestone without explicit approval.
+Milestone 2 adds analytical contact/clearance tests, boundary and overlap cases,
+thin-wall and full-loop sweeps, numerical tolerance/query-budget checks, mass and
+frame tests, and reproducible collision event/export/CLI tests. Sweeps follow the
+actual kinematic path, never just its endpoint chord. Conservative near-contact
+results are explicitly distinguished from confirmed sampled collisions.
 
+Next add the sensor interface, independent RNG streams, encoders, a simplified
+IMU, and tested ray-cast LiDAR. Add actuator dynamics in their subsequent phase.
+Keep the revised phase order and validation gates for later work.

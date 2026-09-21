@@ -3,11 +3,13 @@
 import csv
 import json
 import platform
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
 
 from roboforge import __version__
+from roboforge.robot import DifferentialDriveRobot
 from roboforge.simulation import SimulationResult
 
 
@@ -19,9 +21,9 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         result.config.model_dump_json(indent=2), encoding="utf-8"
     )
     metadata = {
-        "format_version": 1,
+        "format_version": 2,
         "roboforge_version": __version__,
-        "model_version": "ideal-differential-drive-v1",
+        "model_version": "ideal-differential-drive-v2",
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
         "seed": result.config.seed,
@@ -30,10 +32,29 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         "dt_s": result.config.simulation.dt,
         "steps": len(result.states) - 1,
         "duration_s": result.states[-1].time,
-        "collision_enabled": False,
+        "collision_enabled": result.config.simulation.collision.mode == "stop",
+        "collision_method": "lipschitz-interval-v1",
+        "status": result.status,
+        "collision_count": len(result.collisions),
+        "mass_properties": asdict(DifferentialDriveRobot(result.config.robot).mass_properties),
     }
     (directory / "metadata.json").write_text(
         json.dumps(metadata, indent=2, allow_nan=False), encoding="utf-8"
+    )
+    (directory / "collisions.json").write_text(
+        json.dumps([asdict(event) for event in result.collisions], indent=2, allow_nan=False),
+        encoding="utf-8",
+    )
+    (directory / "motion_segments.json").write_text(
+        json.dumps(
+            [
+                {"start_time": result.states[index].time, **asdict(motion)}
+                for index, motion in enumerate(result.motions)
+            ],
+            indent=2,
+            allow_nan=False,
+        ),
+        encoding="utf-8",
     )
     with (directory / "trajectory.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)

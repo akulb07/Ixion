@@ -1,98 +1,91 @@
-# Configuration, state, time and the foundation simulator
+# Configuration, state, time and simulation
 
-## Configuration contract
+## Configuration
 
-`RunConfig` is the current root schema, with `schema_version: 1`, name, seed,
-`RobotConfig`, `Environment`, `SimulationConfig`, and a nonempty tuple of
-`WheelCommand` segments. All schemas are frozen and forbid extra fields. A typo
-such as `wheel_raduis` therefore fails instead of silently choosing a default.
+RunConfig contains schema_version 1, name, seed, RobotConfig, Environment,
+SimulationConfig, and nonempty WheelCommand segments. Milestone 2 adds fields
+with defaults, so existing configurations retain their original motion. Old
+releases reject unknown new fields. Schemas are frozen and forbid extra keys.
+Numerical inputs must be finite; numeric strings and booleans are rejected.
+Steps and seeds are strict integers; dimensions, masses, dt and tolerances are positive.
 
-Numerical floats must be finite real values (integers are accepted), while steps
-and seeds must be strict integers. Booleans and numeric strings are rejected.
-Dimensions and dt must be positive. Commands allow signed angular rates and
-require positive step counts. The integrator is `exact` or `euler`.
+load_config uses a local safe YAML loader for YAML and JSON. Duplicate/non-string
+keys fail with file/field context. A local resolver accepts unquoted exponent
+notation such as 1e-6, needed for serialized JSON; quoted numeric strings fail.
 
-`load_config` uses safe YAML parsing for both YAML and JSON, rejects duplicate
-mapping keys and non-string keys, validates schemas, and includes the filename
-and field path in errors. JSON does not imply a second schema. Configuration
-loading performs no evaluation, network lookup, or arbitrary object creation.
+Environment bounds are [0,width] x [0,height]. Rectangles use lower-left origins,
+circles centre/radius. Obstacles must fit inside bounds; the initial robot centre
+must be inside. With collision mode stop, CLI validate also checks the footprint.
+Simulate records initial overlap as a terminal event. In disabled mode geometry
+has no effect on motion. See [robot model](robot_model.md) and [collision](collision.md).
 
-Environment bounds are `[0,width] x [0,height]`. Rectangles use a lower-left
-origin and positive width/height; circles use centre/radius. Obstacles must fit
-inside bounds. Initial robot centre must be inside bounds. Footprint clearance,
-initial obstacle overlap, and future motion outside bounds are **not checked**;
-they belong to the collision phase. Obstacles and bounds are passive geometry.
+## State and recorded motion
 
-## Robot state
+RobotState contains immutable pose, wheel rates, body twist and time. World
+vx/vy and omega are derived. Initial state is stationary. A normal end-of-step
+sample records the ideal command applied during the preceding interval.
 
-`RobotState` carries immutable `pose`, `wheels`, `twist`, and simulation `time`.
-`vx`, `vy`, and `omega` are derived properties, preventing pose and stored world
-velocity components from disagreeing. Pose is canonical; the twist represents
-the just-applied segment's constant motion. Initial state is stationary.
+A terminal collision state instead has zero wheel/body velocity. Executed
+KinematicMotion segments retain motion over each state interval, while the
+collision event retains the requested command that was blocked. Stopping thus
+does not erase the preceding path. There is one motion segment per state interval.
+Actuators still respond immediately; these are ideal kinematics.
 
-The ideal robot has no acceleration or torque model: the command becomes the
-wheel rate immediately. `footprint_radius` is used only by visualization. Wheel
-mass, chassis mass and actuator response are deliberately deferred until they
-have meaningful physical effects rather than becoming unused parameters.
+## Authoritative clock
 
-## Clock and update order
+SimulationClock computes time as tick*dt rather than repeated additions. The
+simulator owns it. Normal steps define motion, optionally check the sweep,
+advance the tick, integrate, and record. Command durations are integer step
+counts times dt. Wall-clock time never affects motion.
 
-`SimulationClock(dt,tick)` is an immutable clock with nonnegative integer ticks.
-Its time is calculated as `tick*dt`, not by repeated floating-point addition.
-Frequency is `1/dt`. `Simulator` owns the clock and supplies timestamps to the
-robot. Wall-clock duration has no influence on motion.
+For a collision interruption, time_at_fraction(f) returns (tick+f)*dt for f in
+[0,1] inside the next tick. The run terminates at the certified safe fraction.
+There can be one terminal partial interval. A zero-fraction stop updates the
+last state's velocity without adding a duplicate timestamp; executed motion
+segments remain intact. Robot.step rejects inconsistent timestamps.
 
-The initial state is recorded at tick 0. For each command segment:
+Every Simulator.run call starts fresh. Current models make no random draws, so
+the validated and recorded seed is unused. Repeated runs compare complete state,
+collision-event and motion-segment sequences exactly on the tested runtime.
 
-1. Choose constant left/right angular rates.
-2. Advance the authoritative tick.
-3. Integrate the state over dt with those rates.
-4. Record the end-of-step state at the new clock time.
+## Version 2 exports
 
-The end-of-step sample stores the command used during the preceding interval.
-For the example, sample 1000 at t=10 s still contains rates (1,1); sample 1001
-contains (-1,1). Total samples equal one plus the sum of segment steps.
+- config.json: resolved robot/world/command and collision configuration.
+- metadata.json: software/model/numerical versions, dt, seed, duration, state
+  update count, completion/collision status, collision count and mass properties.
+- trajectory.csv: recorded true poses, times, world velocities and wheel rates.
+- collisions.json: stop/candidate times, unresolved interval, reason, requested
+  command, witness points, penetration, candidate pose and query count.
+- motion_segments.json: start times and executed ideal motion segments.
+- trajectory.png: optional plot reconstructed from those motion segments.
 
-`Simulator.run()` allocates fresh robot state and clock. A second call cannot
-continue a previous run accidentally. No random generator is needed yet; the
-validated seed is retained as metadata, explicitly marked unused by this model.
+The metadata steps field counts state updates, including a terminal partial
+interval. It is distinct from planned full ticks. These exports are not a full
+experiment/replay engine: no sensor streams, trial orchestration, atomic writes,
+statistical summaries or replay controls. Saving in an existing directory replaces
+these named files. Retain separate directories for comparisons.
 
-## Result formats
-
-`save_result` writes the resolved `config.json`, `metadata.json`, and
-`trajectory.csv`. CSV includes simulation time, true pose, world velocity, yaw
-rate and actual ideal wheel rates. Metadata includes software/model/format
-versions, Python/NumPy versions, integrator, dt, seed, duration, step count, and
-the explicit flag `collision_enabled: false`.
-
-These are inspectable foundation exports, not the later experiment/replay
-manifest format. They do not yet include sensor streams, algorithm internals,
-trial IDs, wall timestamps, configuration hashes, git revision, lifecycle events,
-transactional writes or statistical summaries. Saving to an existing directory
-replaces these named files; use separate directories to retain runs.
-
-`SimulationResult` stores every sample in memory, so storage is O(steps).
-Large runs and streaming telemetry are future work; no expensive sweep runner
-or background job is created here.
+Results keep all states and motion segments in memory: O(steps). Streaming is
+future work. CLI exit codes: 0 completed; 3 recorded collision/conservative stop;
+2 invalid input or numerical/query-budget failure.
 
 ## Visualization
 
-`plot_trajectory` is an optional matplotlib consumer, using a headless Agg canvas.
-It draws environment geometry, measured ground-truth trajectory, sampled body
-heading arrows, the final circular footprint, and an orientation time series.
-The plot labels the ideal model and disabled collision. It extends axes to show
-out-of-bounds states rather than concealing them. It never edits simulation state.
+sample_trajectory reconstructs executed motion with default maximum spacing
+.05 m and .1 rad, using the existing integrator. These are display samples, not
+new sensor measurements or telemetry; the plot labels them as resampled. Arcs
+remain visible even with only two recorded states, and several revolutions within
+one step can be unwrapped correctly. A sample budget fails explicitly rather than
+silently replacing a complex path with a chord.
 
-The plotted unwrapped orientation reconstructs continuity from canonical heading
-samples when rotation is less than pi radians per sample. For larger increments,
-the plot displays explicitly labelled wrapped angles to avoid ambiguous unwrapping.
-The final heading arrow is red. CSV always retains the actual wrapped heading. There is no interactive 3D
-frontend, live replay, estimated trajectory, sensor visualization or covariance.
+The matplotlib plot displays world geometry, resampled path, heading arrows,
+final footprint and heading, candidate surface contact, and heading over time.
+Axes expand to show out-of-world motion in disabled mode. There is no interactive
+frontend, live replay, state estimate or covariance yet.
 
-## Testing
+## Validation
 
-Configuration tests cover malformed YAML, unsafe tags, duplicate keys, invalid
-geometry, field typos, nonfinite values, invalid dt/steps/seeds, and round trips.
-Simulation tests cover segment timing, pure spin, straight and curved motion,
-stationarity, repeated runs, saving/reloading config and CSV, CLI failure reporting,
-and generating a PNG from actual results. Tests never claim collision support.
+Tests cover malformed/duplicate configs, scientific-notation round trips, model
+immutability, timing, exact/Euler motion, repeatability, masses/frames, static and
+swept contact, partial/zero-fraction stops, exports, CLI behavior and faithful
+curve reconstruction. Milestone-specific reports record measured results.

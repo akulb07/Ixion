@@ -15,6 +15,16 @@ def basic_config(**kwargs):
 
 
 class ConfigTests(unittest.TestCase):
+    def test_unquoted_scientific_notation_roundtrips_but_quoted_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "scientific.yaml"
+            template = "simulation: {collision: {spatial_tolerance: %s}}\ncommands: [{left: 1, right: 1, steps: 1}]"
+            path.write_text(template % "1e-6", encoding="utf-8")
+            self.assertEqual(load_config(path).simulation.collision.spatial_tolerance, 1e-6)
+            path.write_text(template % "'1e-6'", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "spatial_tolerance"):
+                load_config(path)
+
     def test_valid_defaults_and_immutability(self):
         config = basic_config()
         self.assertEqual(config.robot.wheel_radius, 0.05)
