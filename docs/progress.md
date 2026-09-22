@@ -18,7 +18,9 @@ passes its tests and demonstration before the next begins.
 
 | 10 | LiDAR log-odds occupancy mapping | 211 tests, 157 subtests; 51-scan repeatable EKF-pose map |
 
-Next: scan matching and incremental SLAM, experiment engine, faults, benchmarks,
+| 11 | ICP and incremental scan-to-map SLAM front end | 217 tests, 157 subtests; 60 matched scans, drift reduced from 0.340 m to 0.0242 m |
+
+Next: pose graph and loop closure, experiment engine, faults, benchmarks,
 advanced UI, AI and hardware adapters in specification order.
 
 Per-model documents explain assumptions and limitations. The product concept
