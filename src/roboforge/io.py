@@ -23,11 +23,18 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
     metadata = {
         "format_version": 2,
         "roboforge_version": __version__,
-        "model_version": "ideal-differential-drive-v2",
+        "model_version": "differential-drive-slip-v3"
+        if any(f.kind == "wheel_slip" for f in result.config.faults)
+        else "ideal-differential-drive-v2",
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
         "seed": result.config.seed,
         "stochastic_components": [sensor.name for sensor in result.config.sensors],
+        "fault_random_streams": [
+            fault.name
+            for fault in result.config.faults
+            if fault.kind in ("sensor_dropout", "lidar_noise")
+        ],
         "rng_scheme": "sha256-named-pcg64-v1",
         "sensor_readings": len(result.readings),
         "actuator_model": "discrete-wheel-response-v1",

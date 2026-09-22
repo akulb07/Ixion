@@ -28,8 +28,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     replay.add_argument("directory", type=Path)
     replay.add_argument("--time", type=float, required=True)
+    benchmark = subparsers.add_parser("benchmark", help="Compare planners on versioned static maps")
+    benchmark.add_argument("--output", type=Path, required=True)
+    benchmark.add_argument("--seed", type=int, default=42)
+    benchmark.add_argument("--iterations", type=int, default=500)
     args = parser.parse_args(argv)
     try:
+        if args.command == "benchmark":
+            from roboforge.benchmarks import BenchmarkConfig, run_benchmarks
+
+            directory = run_benchmarks(
+                BenchmarkConfig(seeds=(args.seed,), iterations=args.iterations), args.output
+            )
+            print(f"Saved benchmark results to {directory.resolve()}")
+            return 0
         if args.command == "experiment":
             import json
 

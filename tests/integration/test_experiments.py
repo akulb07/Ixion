@@ -117,3 +117,18 @@ def test_cli_experiment(tmp_path):
     config_path = tmp_path / "experiment.json"
     config_path.write_text(ExperimentConfig(base=base()).model_dump_json())
     assert main(["experiment", str(config_path), "--output", str(tmp_path / "runs")]) == 0
+
+
+def test_cli_malformed_experiment_and_replay_errors(tmp_path):
+    broken = tmp_path / "broken.yaml"
+    broken.write_text("base: [unterminated")
+    assert main(["experiment", str(broken), "--output", str(tmp_path / "runs")]) == 2
+    root = run_experiment(ExperimentConfig(base=base()), tmp_path)
+    report = json.loads((root / "report.json").read_text())
+    trial = root / report["trials"][0]["trial_id"]
+    # Legacy standalone exports have no manifest; structural validation still applies.
+    (trial / "manifest.json").unlink()
+    records = json.loads((trial / "motion_segments.json").read_text())
+    records[0]["start"]["x"] = 999
+    (trial / "motion_segments.json").write_text(json.dumps(records))
+    assert main(["replay", str(trial), "--time", ".05"]) == 2

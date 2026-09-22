@@ -13,21 +13,15 @@ passes its tests and demonstration before the next begins.
 | 6 | Encoder odometry, dropout gaps, stream checks | 165 tests, 157 subtests; calibration drift demonstration |
 | 7 | Dijkstra, A*, seeded RRT, fixed-radius RRT* | 179 tests, 157 subtests; all demo paths swept collision-checked |
 | 8 | Pure Pursuit and delivered-encoder navigation lab | 184 tests, 157 subtests; repeatable collision-free arrival in 30.26 s |
-
 | 9 | Three-state EKF, encoder/gyro fusion, landmark correction primitive | 198 tests, 157 subtests; calibration demo error 0.402 m odometry vs 0.00102 m EKF |
-
 | 10 | LiDAR log-odds occupancy mapping | 211 tests, 157 subtests; 51-scan repeatable EKF-pose map |
-
 | 11 | ICP and incremental scan-to-map SLAM front end | 217 tests, 157 subtests; 60 matched scans, drift reduced from 0.340 m to 0.0242 m |
-
 | 12 | Anchored pose graph, verified loop candidates, historical map rebuild | 224 tests, 157 subtests; seven loops, endpoint error 0.341 m to 0.0123 m |
-
 | 13 | Bounded seed/parameter experiments, retained failures, metrics, replay | 230 tests, 157 subtests; 12-trial paired PID sweep |
-
 | 14 | Timed sensor/motor/slip faults, event logs, slip-aware replay | 240 tests, 157 subtests; encoder-scale sensitivity sweep and combined-fault demo |
+| 15 | Versioned static planner benchmarks and input/replay hardening | 247 tests, 157 subtests; 14 successful paths, two retained budget failures |
 
-Next: standardized benchmarks, experiment engine, faults, benchmarks,
-advanced UI, AI and hardware adapters in specification order.
+Next: application/API integration and advanced UI, then AI and hardware adapters.
 
 Per-model documents explain assumptions and limitations. The product concept
 image is a target, not an implemented web interface. The navigation laboratory is

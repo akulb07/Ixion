@@ -1,6 +1,6 @@
 # Architecture and implementation boundary
 
-Current release: 0.8.0. Historical Milestones 1–2 sections below retain their
+Current release: 0.15.0. EKF, occupancy mapping, incremental and batch SLAM, experiments, replay, timed faults and benchmarks are implemented. See the current README and per-model documents; the foundation sections below are historical rationale. Historical Milestones 1–2 sections below retain their
 original design rationale. Current scheduling is delivered encoder readings ->
 optional wheel PID -> actuator response -> swept kinematics -> sensor captures ->
 next tick. Sensor noise uses named independent PCG64 streams. EncoderOdometry

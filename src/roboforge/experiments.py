@@ -62,9 +62,12 @@ class ExperimentConfig(Schema):
 def load_experiment(path: str | Path) -> ExperimentConfig:
     import yaml
 
-    return ExperimentConfig.model_validate(
-        yaml.load(Path(path).read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
-    )
+    try:
+        return ExperimentConfig.model_validate(
+            yaml.load(Path(path).read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
+        )
+    except (ValueError, yaml.YAMLError, RecursionError) as exc:
+        raise ValueError(f"Invalid experiment configuration {path}: {exc}") from exc
 
 
 def _assign(document, path, value):

@@ -31,6 +31,12 @@ class ReplayLog:
     """Snapshot replay does not create a Simulator or execute controller algorithms."""
 
     def __init__(self, directory: str | Path):
+        try:
+            self._load(directory)
+        except (KeyError, TypeError, IndexError, ValueError) as exc:
+            raise ValueError(f"Invalid replay {directory}: {exc}") from exc
+
+    def _load(self, directory: str | Path):
         directory = Path(directory).resolve()
         required = {
             "config.json",
@@ -106,6 +112,17 @@ class ReplayLog:
                 )
             ):
                 raise ValueError("replay motion intervals do not match states")
+            if motion.start != states[index].pose:
+                raise ValueError("replay motion start differs from recorded state")
+            end = motion.pose_at(1)
+            expected = states[index + 1].pose
+            from roboforge.core import wrap_angle
+
+            if (
+                math.hypot(end.x - expected.x, end.y - expected.y) > 1e-9
+                or abs(wrap_angle(end.theta - expected.theta)) > 1e-9
+            ):
+                raise ValueError("replay motion endpoint differs from recorded state")
             motions.append(motion)
         if len(motions) != len(states) - 1:
             raise ValueError("replay must have one motion per state interval")
