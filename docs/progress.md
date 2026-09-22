@@ -22,7 +22,9 @@ passes its tests and demonstration before the next begins.
 
 | 12 | Anchored pose graph, verified loop candidates, historical map rebuild | 224 tests, 157 subtests; seven loops, endpoint error 0.341 m to 0.0123 m |
 
-Next: experiment engine and replay, experiment engine, faults, benchmarks,
+| 13 | Bounded seed/parameter experiments, retained failures, metrics, replay | 230 tests, 157 subtests; 12-trial paired PID sweep |
+
+Next: timed faults and benchmarks, experiment engine, faults, benchmarks,
 advanced UI, AI and hardware adapters in specification order.
 
 Per-model documents explain assumptions and limitations. The product concept
