@@ -44,8 +44,10 @@ def run():
             fused.append(ekf.update(reading, imu[reading.capture_time]))
             dead.append(odometry.update(reading))
     truth = result.states[-1].pose
+
     def error(pose):
         return math.hypot(pose.x - truth.x, pose.y - truth.y)
+
     summary = {
         "odometry_endpoint_error_m": error(dead[-1].pose),
         "ekf_endpoint_error_m": error(fused[-1].pose),

@@ -16,7 +16,9 @@ passes its tests and demonstration before the next begins.
 
 | 9 | Three-state EKF, encoder/gyro fusion, landmark correction primitive | 198 tests, 157 subtests; calibration demo error 0.402 m odometry vs 0.00102 m EKF |
 
-Next: mapping, SLAM, experiment engine, faults, benchmarks,
+| 10 | LiDAR log-odds occupancy mapping | 211 tests, 157 subtests; 51-scan repeatable EKF-pose map |
+
+Next: scan matching and incremental SLAM, experiment engine, faults, benchmarks,
 advanced UI, AI and hardware adapters in specification order.
 
 Per-model documents explain assumptions and limitations. The product concept
