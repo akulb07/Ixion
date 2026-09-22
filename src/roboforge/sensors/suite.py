@@ -4,6 +4,7 @@ import math
 
 from roboforge.config import EncoderConfig, ImuConfig, LidarConfig, RunConfig
 from roboforge.core import nonnegative
+from roboforge.faults import FaultEngine
 from roboforge.geometry import Vector2
 from roboforge.physics import KinematicMotion
 from roboforge.robot import DifferentialDriveRobot
@@ -32,6 +33,7 @@ class SensorSuite:
         self.delivered: set[tuple[str, int]] = set()
         self.initialized = False
         self.delivery_clock = 0.0
+        self.faults = FaultEngine(config)
 
     def _noise(self, sensor, channel, model, value, interval):
         key = sensor.name + ":" + channel
@@ -59,19 +61,20 @@ class SensorSuite:
             self.time = start_time
         end = self.time + motion.dt
         twist = motion.drive.forward(motion.wheels)
+        shaft = motion.encoder_wheels or motion.wheels
         for sensor in self.config.sensors:
             while self.indices[sensor.name] / sensor.rate_hz <= end + 8 * math.ulp(max(1.0, end)):
                 capture_time = self.indices[sensor.name] / sensor.rate_hz
                 elapsed = min(motion.dt, max(0.0, capture_time - self.time))
                 pose = motion.pose_at(elapsed / motion.dt) if motion.dt else motion.start
                 angles = (
-                    self.wheel_angles[0] + motion.wheels.left * elapsed,
-                    self.wheel_angles[1] + motion.wheels.right * elapsed,
+                    self.wheel_angles[0] + shaft.left * elapsed,
+                    self.wheel_angles[1] + shaft.right * elapsed,
                 )
                 self._capture(sensor, capture_time, pose, angles, twist)
                 self.indices[sensor.name] += 1
-        self.wheel_angles[0] += motion.wheels.left * motion.dt
-        self.wheel_angles[1] += motion.wheels.right * motion.dt
+        self.wheel_angles[0] += shaft.left * motion.dt
+        self.wheel_angles[1] += shaft.right * motion.dt
         self.time = end
 
     def _capture(self, sensor, time, pose, angles, twist):
@@ -160,7 +163,7 @@ class SensorSuite:
                     max_range=sensor.max_range,
                 )
         self.previous[sensor.name] = (time, twist)
-        self.readings.append(reading)
+        self.readings.append(self.faults.reading(reading) if self.config.faults else reading)
 
     def deliver(self, until_time: float) -> tuple[SensorReading, ...]:
         """Deliver each captured reading at most once, never before its latency expires."""

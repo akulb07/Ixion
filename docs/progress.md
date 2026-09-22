@@ -24,7 +24,9 @@ passes its tests and demonstration before the next begins.
 
 | 13 | Bounded seed/parameter experiments, retained failures, metrics, replay | 230 tests, 157 subtests; 12-trial paired PID sweep |
 
-Next: timed faults and benchmarks, experiment engine, faults, benchmarks,
+| 14 | Timed sensor/motor/slip faults, event logs, slip-aware replay | 240 tests, 157 subtests; encoder-scale sensitivity sweep and combined-fault demo |
+
+Next: standardized benchmarks, experiment engine, faults, benchmarks,
 advanced UI, AI and hardware adapters in specification order.
 
 Per-model documents explain assumptions and limitations. The product concept

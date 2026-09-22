@@ -64,6 +64,7 @@ class KinematicMotion:
     wheels: WheelSpeeds
     dt: float
     method: Literal["exact", "euler"] = "exact"
+    encoder_wheels: WheelSpeeds | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "dt", nonnegative(self.dt, "motion duration"))
@@ -73,6 +74,8 @@ class KinematicMotion:
             raise ValueError("motion requires a Pose2 and DifferentialDrive")
         if not isinstance(self.wheels, WheelSpeeds):
             raise ValueError("motion requires WheelSpeeds")
+        if self.encoder_wheels is not None and not isinstance(self.encoder_wheels, WheelSpeeds):
+            raise ValueError("encoder wheel rates must be WheelSpeeds")
         finite(self.drive.forward(self.wheels).linear * self.dt, "motion travel")
 
     @property

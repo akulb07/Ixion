@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from roboforge.actuators import ActuatorSample, WheelActuators
 from roboforge.config import RunConfig
 from roboforge.control import EncoderWheelController, WheelControlSample
 from roboforge.core import finite, positive
+from roboforge.faults import FaultEngine, FaultEvent
 from roboforge.geometry import Pose2
 from roboforge.physics import CollisionReport, CollisionWorld, KinematicMotion
 from roboforge.robot import DifferentialDriveRobot, RobotState
@@ -74,6 +75,7 @@ class SimulationResult:
     readings: tuple[SensorReading, ...] = ()
     actuator_samples: tuple[ActuatorSample, ...] = ()
     control_samples: tuple[WheelControlSample, ...] = ()
+    fault_events: tuple[FaultEvent, ...] = ()
 
 
 class Simulator:
@@ -95,6 +97,7 @@ class Simulator:
         motions = []
         actuators = WheelActuators(self.config.actuators)
         actuator_samples = []
+        faults = FaultEngine(self.config)
         sensors = SensorSuite(self.config) if self.config.sensors else None
         controller = (
             EncoderWheelController(self.config.wheel_controller)
@@ -113,15 +116,32 @@ class Simulator:
                     if controller
                     else requested
                 )
-                actuator_sample = actuators.step(actuator_request, clock.dt, clock.time)
+                actuator_sample = actuators.step(
+                    faults.command(actuator_request, clock.time), clock.dt, clock.time
+                )
+                shaft = faults.wheels(actuator_sample.applied, clock.time, "actuator_saturation")
+                actuator_sample = replace(
+                    actuator_sample,
+                    requested=actuator_request,
+                    applied=shaft,
+                    speed_limited=(
+                        actuator_sample.speed_limited[0]
+                        or shaft.left != actuator_sample.applied.left,
+                        actuator_sample.speed_limited[1]
+                        or shaft.right != actuator_sample.applied.right,
+                    ),
+                )
+                actuators.applied = shaft
                 actuator_samples.append(actuator_sample)
-                wheels = actuator_sample.applied
+                wheels = faults.wheels(shaft, clock.time, "wheel_slip")
+                encoder_wheels = shaft if shaft != wheels else None
                 motion = KinematicMotion(
                     state.pose,
                     robot.kinematics,
                     wheels,
                     clock.dt,
                     self.config.simulation.integrator,
+                    encoder_wheels,
                 )
                 if world is not None:
                     sweep = world.sweep(
@@ -151,6 +171,7 @@ class Simulator:
                                     wheels,
                                     clock.dt * sweep.safe_fraction,
                                     self.config.simulation.integrator,
+                                    encoder_wheels,
                                 )
                             )
                             if sensors:
@@ -179,6 +200,7 @@ class Simulator:
                             else (),
                             tuple(actuator_samples),
                             tuple(controller.samples) if controller else (),
+                            faults.events(stop_time),
                         )
                 if sensors:
                     sensors.advance(motion, start_time=clock.time)
@@ -186,6 +208,8 @@ class Simulator:
                 state = robot.step(
                     state, wheels, clock.dt, clock.time, self.config.simulation.integrator
                 )
+                if shaft != wheels:
+                    state = replace(state, wheels=shaft)
                 states.append(state)
                 motions.append(motion)
         return SimulationResult(
@@ -197,4 +221,5 @@ class Simulator:
             else (),
             actuator_samples=tuple(actuator_samples),
             control_samples=tuple(controller.samples) if controller else (),
+            fault_events=faults.events(clock.time),
         )

@@ -33,6 +33,8 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         "actuator_model": "discrete-wheel-response-v1",
         "actuator_samples": len(result.actuator_samples),
         "control_samples": len(result.control_samples),
+        "fault_model": "timed-faults-v1",
+        "fault_events": len(result.fault_events),
         "integrator": result.config.simulation.integrator,
         "dt_s": result.config.simulation.dt,
         "steps": len(result.states) - 1,
@@ -65,6 +67,10 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (directory / "faults.json").write_text(
+        json.dumps([asdict(event) for event in result.fault_events], indent=2, allow_nan=False),
+        encoding="utf-8",
+    )
     (directory / "motion_segments.json").write_text(
         json.dumps(
             [
@@ -87,6 +93,7 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
                 "vx_m_s",
                 "vy_m_s",
                 "omega_rad_s",
+                "body_linear_m_s",
                 "left_rad_s",
                 "right_rad_s",
             ]
@@ -101,6 +108,7 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
                     state.vx,
                     state.vy,
                     state.omega,
+                    state.twist.linear,
                     state.wheels.left,
                     state.wheels.right,
                 ]

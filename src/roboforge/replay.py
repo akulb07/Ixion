@@ -15,7 +15,7 @@ from roboforge.core import finite
 from roboforge.geometry import Pose2
 from roboforge.physics import KinematicMotion
 from roboforge.robot import RobotState
-from roboforge.robotics import DifferentialDrive, WheelSpeeds
+from roboforge.robotics import BodyTwist2, DifferentialDrive, WheelSpeeds
 from roboforge.sensors.readings import SensorReading
 
 
@@ -69,7 +69,12 @@ class ReplayLog:
                     RobotState(
                         Pose2(float(row["x_m"]), float(row["y_m"]), float(row["theta_rad"])),
                         wheels,
-                        drive.forward(wheels),
+                        BodyTwist2(
+                            float(row["body_linear_m_s"])
+                            if "body_linear_m_s" in row
+                            else drive.forward(wheels).linear,
+                            float(row["omega_rad_s"]),
+                        ),
                         float(row["time_s"]),
                     )
                 )
@@ -89,6 +94,9 @@ class ReplayLog:
                 WheelSpeeds(**record["wheels"]),
                 record["dt"],
                 record["method"],
+                WheelSpeeds(**record["encoder_wheels"])
+                if record.get("encoder_wheels") is not None
+                else None,
             )
             if (
                 index + 1 >= len(states)
@@ -130,7 +138,10 @@ class ReplayLog:
             motion = self.motions[index]
             fraction = (time - state.time) / motion.dt
             state = RobotState(
-                motion.pose_at(fraction), motion.wheels, motion.drive.forward(motion.wheels), time
+                motion.pose_at(fraction),
+                motion.encoder_wheels or motion.wheels,
+                motion.drive.forward(motion.wheels),
+                time,
             )
         ready = tuple(
             sorted(

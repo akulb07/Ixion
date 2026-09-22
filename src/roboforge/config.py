@@ -237,6 +237,46 @@ class LidarConfig(SensorBase):
 SensorConfig = Annotated[EncoderConfig | ImuConfig | LidarConfig, Field(discriminator="type")]
 
 
+class FaultConfig(Schema):
+    name: SensorName
+    kind: Literal[
+        "sensor_dropout",
+        "encoder_scale",
+        "gyro_bias",
+        "gyro_drift",
+        "lidar_noise",
+        "wheel_slip",
+        "actuator_delay",
+        "actuator_saturation",
+    ]
+    target: str
+    start: Nonnegative = 0.0
+    end: Nonnegative | None = None
+    magnitude: Real = 0.0
+    delay_steps: Annotated[int, Field(strict=True, ge=0, le=10000)] = 0
+
+    @model_validator(mode="after")
+    def fault_parameters(self):
+        if self.end is not None and self.end <= self.start:
+            raise ValueError("fault end must be after start")
+        if self.kind in ("sensor_dropout", "wheel_slip") and not 0 <= self.magnitude <= 1:
+            raise ValueError("dropout/slip magnitude must be in [0,1]")
+        if self.kind == "encoder_scale" and self.magnitude <= -1:
+            raise ValueError("encoder scale error must be greater than -1")
+        if self.kind == "lidar_noise" and self.magnitude < 0:
+            raise ValueError("LiDAR noise must be nonnegative")
+        if self.kind == "actuator_saturation" and self.magnitude <= 0:
+            raise ValueError("actuator speed limit must be positive")
+        if self.kind == "actuator_delay":
+            if self.target != "both" or self.delay_steps <= 0 or self.magnitude != 0:
+                raise ValueError(
+                    "delay requires target both, positive delay_steps, and zero magnitude"
+                )
+        elif self.delay_steps != 0:
+            raise ValueError("delay_steps is only valid for actuator_delay")
+        return self
+
+
 class RunConfig(Schema):
     schema_version: Literal[1] = 1
     name: str = Field(default="foundation_demo", min_length=1)
@@ -248,6 +288,7 @@ class RunConfig(Schema):
     sensors: tuple[SensorConfig, ...] = ()
     actuators: ActuatorConfig = ActuatorConfig()
     wheel_controller: WheelControllerConfig | None = None
+    faults: tuple[FaultConfig, ...] = ()
 
     @model_validator(mode="after")
     def check_run(self) -> RunConfig:
@@ -268,6 +309,25 @@ class RunConfig(Schema):
             for sensor in self.sensors
         ):
             raise ValueError("wheel controller requires its named encoder sensor")
+        if len({fault.name for fault in self.faults}) != len(self.faults):
+            raise ValueError("fault names must be unique")
+        if sum(fault.delay_steps for fault in self.faults) > 10000:
+            raise ValueError("combined fault delay exceeds 10000-step budget")
+        sensors_by_name = {sensor.name: sensor for sensor in self.sensors}
+        for fault in self.faults:
+            if fault.kind in ("wheel_slip", "actuator_saturation"):
+                if fault.target not in ("left", "right", "both"):
+                    raise ValueError("wheel fault target must be left, right or both")
+            elif fault.kind != "actuator_delay":
+                target = sensors_by_name.get(fault.target)
+                expected = {
+                    "encoder_scale": EncoderConfig,
+                    "gyro_bias": ImuConfig,
+                    "gyro_drift": ImuConfig,
+                    "lidar_noise": LidarConfig,
+                }.get(fault.kind)
+                if target is None or (expected is not None and not isinstance(target, expected)):
+                    raise ValueError("fault target must name a compatible configured sensor")
         return self
 
 
