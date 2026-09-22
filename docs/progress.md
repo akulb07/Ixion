@@ -20,7 +20,9 @@ passes its tests and demonstration before the next begins.
 
 | 11 | ICP and incremental scan-to-map SLAM front end | 217 tests, 157 subtests; 60 matched scans, drift reduced from 0.340 m to 0.0242 m |
 
-Next: pose graph and loop closure, experiment engine, faults, benchmarks,
+| 12 | Anchored pose graph, verified loop candidates, historical map rebuild | 224 tests, 157 subtests; seven loops, endpoint error 0.341 m to 0.0123 m |
+
+Next: experiment engine and replay, experiment engine, faults, benchmarks,
 advanced UI, AI and hardware adapters in specification order.
 
 Per-model documents explain assumptions and limitations. The product concept
