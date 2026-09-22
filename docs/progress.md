@@ -14,7 +14,9 @@ passes its tests and demonstration before the next begins.
 | 7 | Dijkstra, A*, seeded RRT, fixed-radius RRT* | 179 tests, 157 subtests; all demo paths swept collision-checked |
 | 8 | Pure Pursuit and delivered-encoder navigation lab | 184 tests, 157 subtests; repeatable collision-free arrival in 30.26 s |
 
-Next: EKF localization, mapping, SLAM, experiment engine, faults, benchmarks,
+| 9 | Three-state EKF, encoder/gyro fusion, landmark correction primitive | 198 tests, 157 subtests; calibration demo error 0.402 m odometry vs 0.00102 m EKF |
+
+Next: mapping, SLAM, experiment engine, faults, benchmarks,
 advanced UI, AI and hardware adapters in specification order.
 
 Per-model documents explain assumptions and limitations. The product concept
