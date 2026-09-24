@@ -20,8 +20,9 @@ passes its tests and demonstration before the next begins.
 | 13 | Bounded seed/parameter experiments, retained failures, metrics, replay | 230 tests, 157 subtests; 12-trial paired PID sweep |
 | 14 | Timed sensor/motor/slip faults, event logs, slip-aware replay | 240 tests, 157 subtests; encoder-scale sensitivity sweep and combined-fault demo |
 | 15 | Versioned static planner benchmarks and input/replay hardening | 247 tests, 157 subtests; 14 successful paths, two retained budget failures |
+| 16 | Local FastAPI service, bounded queue, durable jobs, cancellation and recorded replay | 257 tests, 157 subtests; API lifecycle, restart, queue, integrity and request-bound checks |
 
-Next: application/API integration and advanced UI, then AI and hardware adapters.
+Next: interactive application workspace and navigation scenario integration, then AI and hardware adapters.
 
 Per-model documents explain assumptions and limitations. The product concept
 image is a target, not an implemented web interface. The navigation laboratory is

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Literal
+from typing import Callable, Literal
 
 from roboforge.actuators import ActuatorSample, WheelActuators
 from roboforge.config import RunConfig
@@ -78,6 +78,10 @@ class SimulationResult:
     fault_events: tuple[FaultEvent, ...] = ()
 
 
+class SimulationCancelled(Exception):
+    """Cooperative cancellation at a simulation step boundary."""
+
+
 class Simulator:
     """Run prescribed wheel commands with optional swept collision stopping.
 
@@ -89,7 +93,9 @@ class Simulator:
     def __init__(self, config: RunConfig) -> None:
         self.config = config
 
-    def run(self) -> SimulationResult:
+    def run(self, should_cancel: Callable[[], bool] | None = None) -> SimulationResult:
+        if should_cancel is not None and should_cancel():
+            raise SimulationCancelled("simulation cancelled")
         robot = DifferentialDriveRobot(self.config.robot)
         clock = SimulationClock(self.config.simulation.dt)
         state = robot.initial_state()
@@ -111,6 +117,8 @@ class Simulator:
         for command in self.config.commands:
             requested = WheelSpeeds(command.left, command.right)
             for _ in range(command.steps):
+                if should_cancel is not None and should_cancel():
+                    raise SimulationCancelled("simulation cancelled")
                 actuator_request = (
                     controller.update(clock.time, requested, sensors.deliver(clock.time))
                     if controller

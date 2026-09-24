@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "roboforge"
-version = "0.15.0"
+version = "0.16.0"
 description = "Reproducible robotics experimentation: validated mathematical foundations"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -13,6 +13,7 @@ dependencies = ["numpy>=1.26,<3", "pydantic>=2,<3", "PyYAML>=6,<7"]
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
 plot = ["matplotlib>=3.8,<4"]
+api = ["fastapi>=0.141,<1", "uvicorn>=0.53,<1", "httpx>=0.28,<1"]
 
 [project.scripts]
 roboforge = "roboforge.cli:main"

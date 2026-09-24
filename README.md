@@ -1,8 +1,8 @@
 # RoboForge
 
 A robotics experimentation laboratory built around explicit equations, measured
-results and reproducible runs. Release **0.15.0** completes the numerical and
-research checkpoints through static planner benchmarking. The approved product
+results and reproducible runs. Release **0.16.0** adds a local simulation and replay
+API to the validated numerical and research core. The approved product
 image remains the target for the application interface; that web UI is next.
 
 ## Implemented capabilities
@@ -20,10 +20,11 @@ image remains the target for the application interface; that web UI is next.
 - Bounded seed/parameter sweeps, retained failures, metrics, paired comparisons and replay.
 - Timed sensor/motor faults and slip that separates shaft rotation from ground motion.
 - Versioned empty-room, corridor, maze and clutter planner benchmarks.
+- Optional local API with bounded background runs, cancellation, persistence and recorded replay.
 
-The current platform is Python APIs, CLI tools, exported data and static plots.
+The current platform is Python APIs, a local HTTP service, CLI tools, exported data and static plots.
 The navigation and SLAM laboratories use explicit integration loops; a unified
-navigation scenario schema, API service and interactive frontend are next. AI,
+navigation scenario schema and interactive frontend are next. AI,
 hardware adapters, dynamic obstacles and force/friction/contact dynamics remain
 unimplemented. Model documents explain narrower algorithm assumptions and limits.
 
@@ -47,6 +48,11 @@ stop policy, not impact dynamics. Simulate returns 0 for completion, 3 for colli
 and 2 for input/numerical failure. Invalid sensor rays use null values, never NaN.
 
 ## Reproducible laboratories
+
+For the optional local service, install `pip install -e ".[api]"` and run
+`roboforge serve --output results/service`. Open http://127.0.0.1:8765/docs for
+interactive endpoint documentation. See [local API](docs/local-api.md) for
+workflow, resource bounds, persistence, and current scope.
 
 ```sh
 python examples/milestone_3/run.py   # seeded sensors
@@ -88,7 +94,7 @@ rerunning simulation. Experiment manifests detect accidental file corruption.
 ## Models and validation
 
 See [checkpoint history](docs/progress.md) and
-[release validation](docs/validation-milestone-15.md).
+[release validation](docs/validation-milestone-16.md).
 The current source and installed wheel are validated with pytest; the historical
 `scripts/test.py` runs only the older unittest subset and is not the release gate.
 

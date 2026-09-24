@@ -32,8 +32,26 @@ def main(argv: list[str] | None = None) -> int:
     benchmark.add_argument("--output", type=Path, required=True)
     benchmark.add_argument("--seed", type=int, default=42)
     benchmark.add_argument("--iterations", type=int, default=500)
+    serve = subparsers.add_parser(
+        "serve", help="Start the optional local API (install roboforge[api])"
+    )
+    serve.add_argument("--output", type=Path, default=Path("results/service"))
+    serve.add_argument("--port", type=int, default=8765)
     args = parser.parse_args(argv)
     try:
+        if args.command == "serve":
+            if not 1 <= args.port <= 65535:
+                raise ValueError("port must be between 1 and 65535")
+            try:
+                import uvicorn
+
+                from roboforge.api import create_app
+            except ImportError as exc:
+                raise ValueError(
+                    'Install API dependencies with: pip install "roboforge[api]"'
+                ) from exc
+            uvicorn.run(create_app(args.output), host="127.0.0.1", port=args.port, workers=1)
+            return 0
         if args.command == "benchmark":
             from roboforge.benchmarks import BenchmarkConfig, run_benchmarks
 
