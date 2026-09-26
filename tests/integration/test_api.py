@@ -29,6 +29,15 @@ def test_api_end_to_end_replay_and_artifacts(tmp_path):
         frame = client.get(prefix + "/frame?time=.025").json()
         assert frame["state"]["time"] == 0.025
         assert all(r["delivery_time"] <= 0.025 for r in frame["sensors"])
+        replay = app.state.service.replay(run_id)
+        for reading in frame["sensors"]:
+            capture_pose = replay.state_at(reading["capture_time"]).pose
+            assert frame["sensor_capture_poses"][reading["sensor"]] == {
+                "x": capture_pose.x,
+                "y": capture_pose.y,
+                "theta": capture_pose.theta,
+            }
+            assert capture_pose != replay.state_at(0.025).pose
         trajectory = client.get(prefix + "/trajectory?max_points=2").json()
         assert trajectory["sampled"] and trajectory["total_states"] == 11
         assert [s["time"] for s in trajectory["states"]] == [0, 0.1]
@@ -64,3 +73,15 @@ def test_api_rejects_invalid_and_cross_origin_requests(tmp_path):
         )
         assert client.get("/api/runs?limit=101").status_code == 422
         assert client.get("/api/runs").json()["total"] == 0
+
+
+def test_workspace_assets_are_local_and_packaged(tmp_path):
+    with TestClient(create_app(tmp_path)) as client:
+        home = client.get("/")
+        assert home.status_code == 200
+        assert "RoboForge" in home.text
+        assert 'src="/assets/app.js"' in home.text
+        for asset in ("app.js", "app.css"):
+            response = client.get("/assets/" + asset)
+            assert response.status_code == 200 and len(response.content) > 1000
+        assert client.get("/assets/does-not-exist.js").status_code == 404

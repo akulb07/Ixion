@@ -64,6 +64,6 @@ headers are rejected; these checks do not replace authentication.
 The API supports the existing prescribed-wheel-command simulation with optional
 PID, actuator models, sensors, and faults. Navigation, SLAM, experiment sweeps,
 and planner benchmarks remain available through their Python/CLI workflows;
-they are not yet service job types. The React workspace is not implemented in
-this milestone. Swagger documentation may require internet access for its
+they are not yet service job types. The [React workspace](workspace.md), added in
+milestone 17, is served at `/`. Swagger documentation may require internet access for its
 browser assets; the JSON API and OpenAPI schema work locally.

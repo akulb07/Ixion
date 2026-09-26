@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.staticfiles import StaticFiles
 
 from roboforge import __version__
 from roboforge.config import RunConfig
@@ -191,8 +192,9 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     @app.get("/api/runs/{run_id}/frame")
     def frame(run_id: str, request: Request, time: float = Query(ge=0, allow_inf_nan=False)):
         service = request.app.state.service
+        replay = service.replay(run_id)
         try:
-            snapshot = service.replay(run_id).at(time)
+            snapshot = replay.at(time)
         except ValueError as exc:
             raise ServiceError(str(exc), 422) from exc
         latest = {}
@@ -206,6 +208,10 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         return {
             "state": asdict(snapshot.state),
             "sensors": list(latest.values()),
+            "sensor_capture_poses": {
+                name: asdict(replay.state_at(reading["capture_time"]).pose)
+                for name, reading in latest.items()
+            },
             "control": snapshot.control,
             "actuator": snapshot.actuator,
             "active_faults": active,
@@ -227,5 +233,13 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     @app.get("/api/runs/{run_id}/artifacts/{filename}")
     def artifact(run_id: str, filename: str, request: Request):
         return FileResponse(request.app.state.service.artifact(run_id, filename), filename=filename)
+
+    web = Path(__file__).parent / "web"
+    if web.is_dir():
+        app.mount("/assets", StaticFiles(directory=web / "assets"), name="workspace-assets")
+
+        @app.get("/", include_in_schema=False)
+        def workspace():
+            return FileResponse(web / "index.html", headers={"Cache-Control": "no-cache"})
 
     return app

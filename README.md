@@ -1,9 +1,8 @@
 # RoboForge
 
 A robotics experimentation laboratory built around explicit equations, measured
-results and reproducible runs. Release **0.16.0** adds a local simulation and replay
-API to the validated numerical and research core. The approved product
-image remains the target for the application interface; that web UI is next.
+results and reproducible runs. Release **0.17.0** adds an interactive React workspace
+for configuring simulations, inspecting sensors and replaying saved experiments.
 
 ## Implemented capabilities
 
@@ -21,10 +20,11 @@ image remains the target for the application interface; that web UI is next.
 - Timed sensor/motor faults and slip that separates shaft rotation from ground motion.
 - Versioned empty-room, corridor, maze and clutter planner benchmarks.
 - Optional local API with bounded background runs, cancellation, persistence and recorded replay.
+- Packaged offline workspace with world visualization, timeline, fault inspector and run history.
 
-The current platform is Python APIs, a local HTTP service, CLI tools, exported data and static plots.
+The current platform includes an interactive workspace, Python APIs, a local HTTP service, CLI tools, exported data and plots.
 The navigation and SLAM laboratories use explicit integration loops; a unified
-navigation scenario schema and interactive frontend are next. AI,
+navigation scenario schema and research workflow integration are next. AI,
 hardware adapters, dynamic obstacles and force/friction/contact dynamics remain
 unimplemented. Model documents explain narrower algorithm assumptions and limits.
 
@@ -50,8 +50,8 @@ and 2 for input/numerical failure. Invalid sensor rays use null values, never Na
 ## Reproducible laboratories
 
 For the optional local service, install `pip install -e ".[api]"` and run
-`roboforge serve --output results/service`. Open http://127.0.0.1:8765/docs for
-interactive endpoint documentation. See [local API](docs/local-api.md) for
+`roboforge serve --output results/service`. Open http://127.0.0.1:8765/ for the
+[interactive workspace](docs/workspace.md), or `/docs` for endpoint documentation. See [local API](docs/local-api.md) for
 workflow, resource bounds, persistence, and current scope.
 
 ```sh
@@ -94,7 +94,7 @@ rerunning simulation. Experiment manifests detect accidental file corruption.
 ## Models and validation
 
 See [checkpoint history](docs/progress.md) and
-[release validation](docs/validation-milestone-16.md).
+[release validation](docs/validation-milestone-17.md).
 The current source and installed wheel are validated with pytest; the historical
 `scripts/test.py` runs only the older unittest subset and is not the release gate.
 

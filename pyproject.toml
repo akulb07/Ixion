@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "roboforge"
-version = "0.16.0"
+version = "0.17.0"
 description = "Reproducible robotics experimentation: validated mathematical foundations"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,7 +22,7 @@ roboforge = "roboforge.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-roboforge = ["py.typed"]
+roboforge = ["py.typed", "web/index.html", "web/assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

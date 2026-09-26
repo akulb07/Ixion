@@ -21,11 +21,12 @@ passes its tests and demonstration before the next begins.
 | 14 | Timed sensor/motor/slip faults, event logs, slip-aware replay | 240 tests, 157 subtests; encoder-scale sensitivity sweep and combined-fault demo |
 | 15 | Versioned static planner benchmarks and input/replay hardening | 247 tests, 157 subtests; 14 successful paths, two retained budget failures |
 | 16 | Local FastAPI service, bounded queue, durable jobs, cancellation and recorded replay | 257 tests, 157 subtests; API lifecycle, restart, queue, integrity and request-bound checks |
+| 17 | React/TypeScript workspace, recorded world and sensor display, playback, history and setup editing | 258 Python tests, 157 subtests; three frontend numerical tests; browser run/replay and responsive checks |
 
-Next: interactive application workspace and navigation scenario integration, then AI and hardware adapters.
+Next: navigation scenario integration and research workflow UI, then AI and hardware adapters.
 
 Per-model documents explain assumptions and limitations. The product concept
-image is a target, not an implemented web interface. The navigation laboratory is
+image remains the broader design target; the simulation workspace is implemented. The navigation laboratory is
 an explicit component integration example; the CLI supports prescribed wheel
 commands and optional wheel PID, not a navigation scenario schema yet. Arrival
 means entering the configured 5 cm tolerance, not a physically settled stop.

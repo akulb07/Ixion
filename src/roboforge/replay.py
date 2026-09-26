@@ -145,7 +145,8 @@ class ReplayLog:
             else []
         )
 
-    def at(self, time: float) -> ReplayFrame:
+    def state_at(self, time: float) -> RobotState:
+        """Interpolate truth without scanning sensor or controller histories."""
         time = finite(time, "replay time")
         if not 0 <= time <= self.states[-1].time:
             raise ValueError("replay time is outside the recorded interval")
@@ -160,6 +161,11 @@ class ReplayLog:
                 motion.drive.forward(motion.wheels),
                 time,
             )
+        return state
+
+    def at(self, time: float) -> ReplayFrame:
+        state = self.state_at(time)
+        time = state.time
         ready = tuple(
             sorted(
                 (r for r in self.readings if r.delivery_time <= time),
