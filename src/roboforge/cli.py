@@ -83,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
                         "delivered_readings": [r.model_dump() for r in frame.readings],
                         "control": frame.control,
                         "actuator": frame.actuator,
+                        "navigation": frame.navigation,
                     },
                     allow_nan=False,
                 )
@@ -121,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"Saved to {args.output.resolve()}; collision mode={config.simulation.collision.mode}"
         )
-        return 3 if result.status == "collision" else 0
+        return 0 if result.status == "completed" else 3
     except (ValueError, OSError, OverflowError) as exc:
         print(str(exc), file=sys.stderr)
         return 2

@@ -1,4 +1,4 @@
-import type { Config, Frame, Trajectory } from "./types";
+import type { Config, Frame, Trajectory, PlanningDocument } from "./types";
 import { scanSegments, sensorMount } from "./math.mjs";
 
 export function World({
@@ -7,12 +7,14 @@ export function World({
   trajectory,
   showPath,
   showScan,
+  plan,
 }: {
   config: Config;
   frame: Frame | null;
   trajectory: Trajectory | null;
   showPath: boolean;
   showScan: boolean;
+  plan: PlanningDocument | null;
 }) {
   const { width: w, height: h, obstacles } = config.environment;
   const pose = frame?.state.pose ?? config.robot.initial_pose;
@@ -27,7 +29,7 @@ export function World({
       className="world"
       viewBox={`${-0.4 * scale} ${-0.4 * scale} ${w + 0.8 * scale} ${h + 0.8 * scale}`}
       role="img"
-      aria-label="Simulation world, ground-truth robot pose and recorded sensor rays"
+      aria-label="Simulation world, ground-truth robot, sensor rays and navigation estimate"
     >
       <defs>
         <pattern
@@ -39,7 +41,7 @@ export function World({
           <path
             d={`M ${0.5 * scale} 0 L 0 0 0 ${0.5 * scale}`}
             fill="none"
-            stroke="#253238"
+            stroke="#3c3e44"
             strokeWidth={0.008 * scale}
           />
         </pattern>
@@ -49,8 +51,8 @@ export function World({
           width={w}
           height={h}
           rx={0.05 * scale}
-          fill="#151e22"
-          stroke="#485a62"
+          fill="#26282d"
+          stroke="#606060"
           strokeWidth={0.025 * scale}
         />
         <rect width={w} height={h} fill="url(#grid)" />
@@ -62,8 +64,8 @@ export function World({
               y={o.y}
               width={o.width}
               height={o.height}
-              fill="#35444c"
-              stroke="#697d87"
+              fill="#494c53"
+              stroke="#929397"
               strokeWidth={0.025 * scale}
               rx={0.025 * scale}
             />
@@ -73,11 +75,24 @@ export function World({
               cx={o.x}
               cy={o.y}
               r={o.radius}
-              fill="#35444c"
-              stroke="#697d87"
+              fill="#494c53"
+              stroke="#929397"
               strokeWidth={0.025 * scale}
             />
           ),
+        )}
+        {config.navigation && (
+          <polyline
+            points={config.navigation.path
+              .map((p) => `${p.x},${p.y}`)
+              .join(" ")}
+            fill="none"
+            stroke="#b9a5c7"
+            strokeWidth={0.025 * scale}
+            strokeDasharray={`${0.1 * scale} ${0.06 * scale}`}
+          >
+            <title>Reference route for navigation</title>
+          </polyline>
         )}
         {showPath && trajectory && (
           <polyline
@@ -86,7 +101,7 @@ export function World({
               .map((s) => `${s.pose.x},${s.pose.y}`)
               .join(" ")}
             fill="none"
-            stroke="#64ddd1"
+            stroke="#8db6a4"
             strokeWidth={0.027 * scale}
             strokeLinejoin="round"
           />
@@ -109,7 +124,7 @@ export function World({
                   y1={s.y}
                   x2={s.endX}
                   y2={s.endY}
-                  stroke="#66b8fa"
+                  stroke="#99aebe"
                   opacity=".12"
                   strokeWidth={0.012 * scale}
                 />
@@ -118,7 +133,7 @@ export function World({
                     cx={s.endX}
                     cy={s.endY}
                     r={0.024 * scale}
-                    fill="#80c8ff"
+                    fill="#afc0cc"
                   />
                 )}
               </g>
@@ -127,11 +142,10 @@ export function World({
         <g
           transform={`translate(${pose.x},${pose.y}) rotate(${(pose.theta * 180) / Math.PI})`}
         >
-          <circle r={radius * 1.55} fill="#61d9cd" opacity=".07" />
           <circle
             r={radius}
-            fill="#29635e"
-            stroke="#80f2e5"
+            fill="#6a4c38"
+            stroke="#e5af7f"
             strokeWidth={0.025 * scale}
           />
           <rect
@@ -140,7 +154,7 @@ export function World({
             width={radius * 1.3}
             height={radius * 0.22}
             rx={0.025 * scale}
-            fill="#d2e6e5"
+            fill="#cccccc"
           />
           <rect
             x={-radius * 0.65}
@@ -148,20 +162,74 @@ export function World({
             width={radius * 1.3}
             height={radius * 0.22}
             rx={0.025 * scale}
-            fill="#d2e6e5"
+            fill="#cccccc"
           />
           <path
             d={`M ${radius * 0.75} 0 L ${-radius * 0.2} ${radius * 0.45} L ${-radius * 0.2} ${-radius * 0.45} Z`}
-            fill="#9bfff2"
+            fill="#d4d4d4"
           />
         </g>
+        {frame?.navigation && (
+          <g
+            transform={`translate(${frame.navigation.estimate.x},${frame.navigation.estimate.y})`}
+          >
+            <title>
+              Encoder pose estimate at capture time{" "}
+              {frame.navigation.estimate_time ?? "unavailable"} s
+            </title>
+            <path
+              d={`M 0 ${radius * 1.5} L ${radius * 1.5} 0 L 0 ${-radius * 1.5} L ${-radius * 1.5} 0 Z`}
+              fill="none"
+              stroke="#9cbaa7"
+              strokeWidth={0.022 * scale}
+            />
+          </g>
+        )}
         <path
           d={`M .2 .7 V .2 H .7`}
           fill="none"
-          stroke="#84959d"
+          stroke="#929397"
           strokeWidth={0.018 * scale}
         />
+        {plan && (
+          <g>
+            <title>
+              Planned path preview: {plan.result.status}. Path not executed.
+            </title>
+            <polyline
+              points={plan.result.path.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill="none"
+              stroke="#b9a5c7"
+              strokeWidth={0.035 * scale}
+              strokeDasharray={`${0.1 * scale} ${0.06 * scale}`}
+            />
+            <circle
+              cx={plan.request.goal.x}
+              cy={plan.request.goal.y}
+              r={plan.planning_radius_m}
+              fill="none"
+              stroke="#d7ba7d"
+              strokeWidth={0.015 * scale}
+              strokeDasharray={`${0.05 * scale} ${0.04 * scale}`}
+            />
+            <path
+              d={`M ${plan.request.goal.x - 0.1 * scale} ${plan.request.goal.y} h ${0.2 * scale} M ${plan.request.goal.x} ${plan.request.goal.y - 0.1 * scale} v ${0.2 * scale}`}
+              stroke="#d7ba7d"
+              strokeWidth={0.03 * scale}
+            />
+          </g>
+        )}
       </g>
+      {plan && (
+        <text
+          x={0.2 * scale}
+          y={0.28 * scale}
+          fill="#b9a5c7"
+          fontSize={0.12 * scale}
+        >
+          PLANNED PATH · {plan.result.status.toUpperCase()} · NOT EXECUTED
+        </text>
+      )}
       <text x={0.78} y={h - 0.16} className="axis-label">
         x
       </text>

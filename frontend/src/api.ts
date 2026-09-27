@@ -26,6 +26,8 @@ export const post = <T>(path: string, body?: unknown) =>
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 export const ready = (status?: string) =>
-  status === "completed" || status === "collision";
+  status === "completed" ||
+  status === "collision" ||
+  status === "budget_exceeded";
 export const active = (status?: string) =>
   status === "queued" || status === "running";

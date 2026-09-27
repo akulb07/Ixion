@@ -1,3 +1,3 @@
 """RoboForge numerical foundations; no simulator or hardware dependencies."""
 
-__version__ = "0.17.0"
+__version__ = "0.19.0"

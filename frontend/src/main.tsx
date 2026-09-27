@@ -2,14 +2,47 @@ import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { request, post, ready, active } from "./api";
 import { World } from "./World";
+import { PlannerPanel } from "./PlannerPanel";
 import { nextTime } from "./math.mjs";
-import type { Config, Frame, Job, Preset, Trajectory } from "./types";
+import type {
+  Config,
+  Frame,
+  Job,
+  Preset,
+  Trajectory,
+  PlanningDocument,
+  Navigation,
+} from "./types";
 import "./style.css";
 
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 const number = (value: number | undefined | null, digits = 3) =>
   value == null || !Number.isFinite(value) ? "—" : value.toFixed(digits);
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+function ActivityIcon({
+  kind,
+}: {
+  kind: "files" | "plan" | "inspect" | "history";
+}) {
+  const paths = {
+    files: "M8 3h11v15H8z M5 7H3v14h11v-2",
+    plan: "M5 6h4l6 12h4 M5 18h4l6-12h4 M3 4h2v4H3z M19 16h2v4h-2z",
+    inspect: "M4 4h16v16H4z M4 10h16 M12 10v10",
+    history: "M4 8a8 8 0 1 1-1 8 M4 3v5H0 M12 7v5l4 2",
+  };
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      aria-hidden="true"
+    >
+      <path d={paths[kind]} />
+    </svg>
+  );
+}
 
 function Chart({
   trajectory,
@@ -51,20 +84,20 @@ function Chart({
           x2="688"
           y1={y}
           y2={y}
-          stroke="#2a343b"
+          stroke="#363636"
           strokeDasharray="3 5"
         />
       ))}
       <polyline
         points={path("left")}
         fill="none"
-        stroke="#68ded2"
+        stroke="#8db6a4"
         strokeWidth="2"
       />
       <polyline
         points={path("right")}
         fill="none"
-        stroke="#99a4ff"
+        stroke="#b9a5c7"
         strokeWidth="2"
       />
       <line
@@ -72,7 +105,7 @@ function Chart({
         x2={12 + (676 * cursor) / (duration || 1)}
         y1="10"
         y2="90"
-        stroke="#e5e9e8"
+        stroke="#cccccc"
         opacity=".65"
       />
       <text x="12" y="105">
@@ -92,6 +125,10 @@ function Chart({
 }
 
 function App() {
+  const [setupMode, setSetupMode] = useState<"simulation" | "planning">(
+    "simulation",
+  );
+  const [plannedPath, setPlannedPath] = useState<PlanningDocument | null>(null);
   const [presets, setPresets] = useState<Preset[]>([]),
     [draft, setDraft] = useState<Config | null>(null);
   const [json, setJson] = useState(""),
@@ -291,6 +328,31 @@ function App() {
     apply(copy);
     setNotice("");
   };
+  const runNavigation = async (navigation: Navigation) => {
+    if (!draft || jsonDirty || selected) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const config = {
+        ...draft,
+        name: `${draft.name}_navigation`,
+        commands: [],
+        navigation,
+        simulation: {
+          ...draft.simulation,
+          collision: { ...draft.simulation.collision, mode: "stop" },
+        },
+      };
+      const result = await post<Job>("/api/runs", config);
+      select(result.id);
+      setJob(result);
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const cancel = async () => {
     if (!selected) return;
     setBusy(true);
@@ -339,36 +401,81 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">
-            R<span>F</span>
+          <span className="brand-mark" aria-hidden="true">
+            RF
           </span>
-          <div>
-            ROBOFORGE<small>ROBOTICS EXPERIMENT WORKSPACE</small>
-          </div>
+          <span>RoboForge</span>
         </div>
         <div className="top-context">
-          <span className="dot" /> Local workspace{" "}
-          <span className="divider">/</span>{" "}
-          <span className="muted">
-            {version ? `v${version}` : "Connecting…"}
-          </span>
+          {draft?.name ?? "workspace"} — RoboForge
         </div>
         <a className="text-link" href="/docs" target="_blank" rel="noreferrer">
           API reference ↗
         </a>
       </header>
+      <nav className="activitybar" aria-label="Workspace navigation">
+        <button
+          title="Simulation setup"
+          aria-label="Simulation setup"
+          aria-pressed={setupMode === "simulation"}
+          onClick={() => {
+            setSetupMode("simulation");
+            document.getElementById("experiment-setup")?.focus();
+          }}
+        >
+          <ActivityIcon kind="files" />
+        </button>
+        <button
+          title="Path planning"
+          aria-label="Open path planning"
+          aria-pressed={setupMode === "planning"}
+          onClick={() => {
+            setSetupMode("planning");
+            document.getElementById("experiment-setup")?.focus();
+          }}
+        >
+          <ActivityIcon kind="plan" />
+        </button>
+        <button
+          title="State inspector"
+          aria-label="Focus state inspector"
+          onClick={() => document.getElementById("state-inspector")?.focus()}
+        >
+          <ActivityIcon kind="inspect" />
+        </button>
+        <button
+          title="Run history"
+          aria-label="Focus run history"
+          onClick={() => document.getElementById("run-history")?.focus()}
+        >
+          <ActivityIcon kind="history" />
+        </button>
+      </nav>
       <div className="page-heading">
-        <div>
-          <div className="eyebrow">EXPERIMENT LAB / DIFFERENTIAL DRIVE</div>
-          <h1>Understand every move.</h1>
-          <p>Configure, simulate, and inspect the evidence.</p>
+        <div className="breadcrumb">
+          <span>workspace</span>
+          <span aria-hidden="true">›</span>
+          <h1>{setupMode === "planning" ? "Path planning" : "Simulation"}</h1>
+          {jsonDirty && <span className="unsaved">Unapplied edits</span>}
         </div>
         <div className="heading-actions">
           <button onClick={() => importInput.current?.click()} disabled={busy}>
             ↑ Import setup
           </button>
-          <button className="primary" disabled={busy || !draft} onClick={run}>
-            {busy ? "Working…" : "▶ Run experiment"}
+          <button
+            className="primary"
+            disabled={busy || !draft}
+            onClick={
+              setupMode === "planning" ? () => setSetupMode("simulation") : run
+            }
+          >
+            {busy
+              ? "Working…"
+              : setupMode === "planning"
+                ? "Simulation setup →"
+                : draft?.navigation
+                  ? "▶ Run navigation"
+                  : "▶ Run experiment"}
           </button>
           <input
             ref={importInput}
@@ -396,10 +503,31 @@ function App() {
         </div>
       )}
       <main className="workspace">
-        <aside className="panel setup">
+        <aside
+          className="panel setup"
+          id="experiment-setup"
+          tabIndex={-1}
+          aria-label="Experiment setup"
+        >
           <div className="panel-title">
             <h2>Experiment setup</h2>
             <span className="tag">DRAFT</span>
+          </div>
+          <div className="tabs" role="tablist" aria-label="Setup mode">
+            <button
+              role="tab"
+              aria-selected={setupMode === "simulation"}
+              onClick={() => setSetupMode("simulation")}
+            >
+              Simulation
+            </button>
+            <button
+              role="tab"
+              aria-selected={setupMode === "planning"}
+              onClick={() => setSetupMode("planning")}
+            >
+              Path planning
+            </button>
           </div>
           <div className="setup-body">
             <label>
@@ -441,123 +569,166 @@ function App() {
                     }
                   />
                 </label>
-                <div className="section-label">
-                  01 <span>Robot & world</span>
-                </div>
-                <div className="robot-card">
-                  <div className="mini-robot">◉</div>
-                  <div>
-                    <strong>Differential drive</strong>
-                    <small>
-                      {number(draft.robot.footprint_radius * 2, 2)} m footprint
-                      · {draft.sensors.length} sensors
-                    </small>
+                <div hidden={setupMode !== "simulation"}>
+                  <div className="section-label">
+                    01 <span>Robot & world</span>
                   </div>
-                </div>
-                <div className="pair">
-                  <label>
-                    SEED
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={Number.isFinite(draft.seed) ? draft.seed : ""}
-                      disabled={jsonDirty || busy}
-                      onChange={(e) =>
-                        edit((c) => {
-                          c.seed = e.target.valueAsNumber;
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    TIME STEP (s)
-                    <input
-                      type="number"
-                      min=".0001"
-                      step=".01"
-                      value={
-                        Number.isFinite(draft.simulation.dt)
-                          ? draft.simulation.dt
-                          : ""
-                      }
-                      disabled={jsonDirty || busy}
-                      onChange={(e) =>
-                        edit((c) => {
-                          c.simulation.dt = e.target.valueAsNumber;
-                        })
-                      }
-                    />
-                  </label>
-                </div>
-                <div className="section-label">
-                  02 <span>Wheel commands</span>
-                </div>
-                {draft.commands.map((cmd, i) => (
-                  <div className="command" key={i}>
-                    <span className="command-caption">
-                      SEGMENT {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <div className="pair">
-                      <label>
-                        LEFT (rad/s)
-                        <input
-                          aria-label={`Segment ${i + 1} left wheel`}
-                          type="number"
-                          step=".5"
-                          value={Number.isFinite(cmd.left) ? cmd.left : ""}
-                          disabled={jsonDirty || busy}
-                          onChange={(e) =>
-                            edit((c) => {
-                              c.commands[i].left = e.target.valueAsNumber;
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        RIGHT (rad/s)
-                        <input
-                          aria-label={`Segment ${i + 1} right wheel`}
-                          type="number"
-                          step=".5"
-                          value={Number.isFinite(cmd.right) ? cmd.right : ""}
-                          disabled={jsonDirty || busy}
-                          onChange={(e) =>
-                            edit((c) => {
-                              c.commands[i].right = e.target.valueAsNumber;
-                            })
-                          }
-                        />
-                      </label>
+                  <div className="robot-card">
+                    <div className="mini-robot">◉</div>
+                    <div>
+                      <strong>Differential drive</strong>
+                      <small>
+                        {number(draft.robot.footprint_radius * 2, 2)} m
+                        footprint · {draft.sensors.length} sensors
+                      </small>
                     </div>
+                  </div>
+                  <div className="pair">
                     <label>
-                      STEPS
+                      SEED
                       <input
-                        aria-label={`Segment ${i + 1} steps`}
                         type="number"
-                        min="1"
+                        min="0"
                         step="1"
-                        value={Number.isFinite(cmd.steps) ? cmd.steps : ""}
+                        value={Number.isFinite(draft.seed) ? draft.seed : ""}
                         disabled={jsonDirty || busy}
                         onChange={(e) =>
                           edit((c) => {
-                            c.commands[i].steps = e.target.valueAsNumber;
+                            c.seed = e.target.valueAsNumber;
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      TIME STEP (s)
+                      <input
+                        type="number"
+                        min=".0001"
+                        step=".01"
+                        value={
+                          Number.isFinite(draft.simulation.dt)
+                            ? draft.simulation.dt
+                            : ""
+                        }
+                        disabled={jsonDirty || busy}
+                        onChange={(e) =>
+                          edit((c) => {
+                            c.simulation.dt = e.target.valueAsNumber;
                           })
                         }
                       />
                     </label>
                   </div>
-                ))}
-                <div className="setup-summary">
-                  <span>Planned duration</span>
-                  <strong>
-                    {number(
-                      draft.commands.reduce((n, c) => n + c.steps, 0) *
-                        draft.simulation.dt,
-                      2,
-                    )}{" "}
-                    s
-                  </strong>
+                  <div className="section-label">
+                    02{" "}
+                    <span>
+                      {draft.navigation ? "Path following" : "Wheel commands"}
+                    </span>
+                  </div>
+                  {draft.navigation && (
+                    <div className="command">
+                      <p className="hint">
+                        Navigation setup: {draft.navigation.path.length}{" "}
+                        waypoints, {draft.navigation.max_steps} steps maximum.
+                        Uses encoder {draft.navigation.encoder}.
+                      </p>
+                      <button
+                        onClick={() =>
+                          edit((c) => {
+                            c.navigation = null;
+                            c.commands = [{ left: 4, right: 7, steps: 500 }];
+                          })
+                        }
+                        disabled={busy || jsonDirty}
+                      >
+                        Switch to wheel commands
+                      </button>
+                    </div>
+                  )}
+                  {draft.commands.map((cmd, i) => (
+                    <div className="command" key={i}>
+                      <span className="command-caption">
+                        SEGMENT {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <div className="pair">
+                        <label>
+                          LEFT (rad/s)
+                          <input
+                            aria-label={`Segment ${i + 1} left wheel`}
+                            type="number"
+                            step=".5"
+                            value={Number.isFinite(cmd.left) ? cmd.left : ""}
+                            disabled={jsonDirty || busy}
+                            onChange={(e) =>
+                              edit((c) => {
+                                c.commands[i].left = e.target.valueAsNumber;
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          RIGHT (rad/s)
+                          <input
+                            aria-label={`Segment ${i + 1} right wheel`}
+                            type="number"
+                            step=".5"
+                            value={Number.isFinite(cmd.right) ? cmd.right : ""}
+                            disabled={jsonDirty || busy}
+                            onChange={(e) =>
+                              edit((c) => {
+                                c.commands[i].right = e.target.valueAsNumber;
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <label>
+                        STEPS
+                        <input
+                          aria-label={`Segment ${i + 1} steps`}
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={Number.isFinite(cmd.steps) ? cmd.steps : ""}
+                          disabled={jsonDirty || busy}
+                          onChange={(e) =>
+                            edit((c) => {
+                              c.commands[i].steps = e.target.valueAsNumber;
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                  ))}
+                  <div className="setup-summary">
+                    <span>
+                      {draft.navigation
+                        ? "Maximum duration"
+                        : "Planned duration"}
+                    </span>
+                    <strong>
+                      {number(
+                        (draft.navigation?.max_steps ??
+                          draft.commands.reduce((n, c) => n + c.steps, 0)) *
+                          draft.simulation.dt,
+                        2,
+                      )}{" "}
+                      s
+                    </strong>
+                  </div>
+                </div>
+                <div hidden={setupMode !== "planning"}>
+                  <PlannerPanel
+                    config={draft}
+                    disabled={
+                      busy ||
+                      jsonDirty ||
+                      selected !== null ||
+                      setupMode !== "planning"
+                    }
+                    onPlan={setPlannedPath}
+                    onNavigate={runNavigation}
+                  />
                 </div>
                 <details>
                   <summary>
@@ -600,9 +771,14 @@ function App() {
         </aside>
         <section className="center-column">
           <div className="panel viewport">
-            <div className="panel-title">
+            <div className="panel-title editor-title">
               <div className="title-inline">
-                <h2>World view</h2>
+                <h2>
+                  <span className="file-icon" aria-hidden="true">
+                    ◇
+                  </span>{" "}
+                  World view
+                </h2>
                 <span className={`tag ${ready(job?.status) ? "teal" : ""}`}>
                   {selected ? (job?.status ?? "LOADING") : "SETUP PREVIEW"}
                 </span>
@@ -640,6 +816,7 @@ function App() {
               {displayConfig ? (
                 <World
                   config={displayConfig}
+                  plan={selected ? null : plannedPath}
                   frame={frame}
                   trajectory={trajectory}
                   showPath={showPath}
@@ -650,7 +827,11 @@ function App() {
               )}
               <div className="world-caption">
                 <span className="dot" />{" "}
-                {trajectory ? "RECORDED REPLAY" : "CONFIGURED WORLD"}
+                {displayConfig?.navigation
+                  ? "◇ ENCODER ESTIMATE · DASHED ROUTE"
+                  : trajectory
+                    ? "RECORDED REPLAY"
+                    : "CONFIGURED WORLD"}
                 <span>SI units · x / y plane</span>
               </div>
             </div>
@@ -748,7 +929,7 @@ function App() {
           </div>
           <div className="panel telemetry">
             <div className="panel-title">
-              <h2>Wheel motion</h2>
+              <h2>Output · Wheel motion</h2>
               <div className="chart-legend">
                 <span>● Left</span>
                 <span>● Right</span>
@@ -764,7 +945,12 @@ function App() {
           </div>
         </section>
         <aside className="right-column">
-          <div className="panel inspector">
+          <div
+            className="panel inspector"
+            id="state-inspector"
+            tabIndex={-1}
+            aria-label="State inspector"
+          >
             <div className="panel-title">
               <h2>State inspector</h2>
               <span className="tag">TRUTH</span>
@@ -808,6 +994,44 @@ function App() {
                 : "No replay frame selected"}{" "}
               · simulator ground truth
             </div>
+            {displayConfig?.navigation && (
+              <section
+                className="navigation-inspector"
+                aria-label="Navigation estimate"
+              >
+                <h2>Encoder estimate</h2>
+                <p className="mono">
+                  x {number(frame?.navigation?.estimate.x)} · y{" "}
+                  {number(frame?.navigation?.estimate.y)} m
+                </p>
+                <p className="hint">
+                  Captured {number(frame?.navigation?.estimate_time, 2)} s ·{" "}
+                  {frame?.navigation?.measurement_fresh
+                    ? "fresh"
+                    : "waiting / stale"}
+                </p>
+                <p>
+                  Estimated goal error:{" "}
+                  {number(frame?.navigation?.tracking.goal_distance)} m
+                </p>
+                <p className="hint">
+                  Outcome:{" "}
+                  {job?.navigation_outcome?.replaceAll("_", " ") ??
+                    job?.status ??
+                    "not run"}
+                  .
+                  {job?.metrics && (
+                    <>
+                      {" "}
+                      Truth goal error: {number(
+                        job.metrics.truth_goal_error_m,
+                      )}{" "}
+                      m.
+                    </>
+                  )}
+                </p>
+              </section>
+            )}
             <div className="tabs" role="tablist" aria-label="Inspector">
               <button
                 role="tab"
@@ -893,7 +1117,12 @@ function App() {
               )}
             </div>
           </div>
-          <div className="panel history">
+          <div
+            className="panel history"
+            id="run-history"
+            tabIndex={-1}
+            aria-label="Run history"
+          >
             <div className="panel-title">
               <h2>Run history</h2>
               <span className="count">{total}</span>
@@ -956,6 +1185,13 @@ function App() {
                 </a>
                 {ready(job?.status) && (
                   <>
+                    {runConfig?.navigation && (
+                      <a
+                        href={`/api/runs/${selected}/artifacts/navigation.json`}
+                      >
+                        Navigation ↓
+                      </a>
+                    )}
                     <a href={`/api/runs/${selected}/artifacts/trajectory.csv`}>
                       Trajectory ↓
                     </a>
@@ -971,9 +1207,20 @@ function App() {
       </main>
       <footer>
         <span>
-          <span className="dot" /> Deterministic simulation · persisted results
+          <span className="dot" /> {version ? "Local" : "Connecting…"}
+          <span className="status-separator">
+            {selected ? (job?.status ?? "Loading run") : "Draft"}
+          </span>
         </span>
-        <span>RoboForge / Research workspace</span>
+        <span>
+          SI units{" "}
+          <span className="status-separator">
+            {setupMode === "planning"
+              ? "Static path preview"
+              : "Differential drive"}
+          </span>{" "}
+          {version && `v${version}`}
+        </span>
       </footer>
     </div>
   );

@@ -1,4 +1,15 @@
 export type Pose = { x: number; y: number; theta: number };
+export type Navigation = {
+  path: { x: number; y: number }[];
+  encoder: string;
+  max_steps: number;
+  max_speed: number;
+  lookahead: number;
+  clearance: number;
+  max_yaw_rate?: number;
+  goal_tolerance?: number;
+  max_sensor_age?: number;
+};
 export type State = {
   pose: Pose;
   time: number;
@@ -49,6 +60,7 @@ export type Config = {
   };
   simulation: { dt: number; integrator: string; collision: { mode: string } };
   commands: { left: number; right: number; steps: number }[];
+  navigation?: Navigation | null;
   sensors: Sensor[];
   faults: Fault[];
 };
@@ -61,6 +73,7 @@ export type Job = {
   error: string | null;
   metrics: Record<string, number> | null;
   cancel_requested: boolean;
+  navigation_outcome?: string | null;
 };
 export type Reading = {
   sensor: string;
@@ -77,6 +90,17 @@ export type Reading = {
   gyro_z?: number | null;
 };
 export type Frame = {
+  navigation?: {
+    time: number;
+    estimate: Pose;
+    estimate_time: number | null;
+    measurement_fresh: boolean;
+    tracking: {
+      goal_distance: number;
+      cross_track_error: number;
+      reached: boolean;
+    };
+  } | null;
   state: State;
   sensors: Reading[];
   sensor_capture_poses: Record<string, Pose>;
@@ -88,3 +112,32 @@ export type Trajectory = {
   total_states: number;
 };
 export type Preset = { id: string; title: string; config: Config };
+export type PlanningDocument = {
+  format_version: number;
+  software_version: string;
+  request_sha256: string;
+  planning_radius_m: number;
+  request: {
+    environment: Config["environment"];
+    start: { x: number; y: number };
+    goal: { x: number; y: number };
+    algorithm: string;
+    seed: number;
+    budget: number;
+    footprint_radius: number;
+    clearance: number;
+    resolution: number;
+    step_size: number;
+    goal_bias: number;
+    rewire_radius: number;
+  };
+  result: {
+    algorithm: string;
+    status: string;
+    path: { x: number; y: number }[];
+    length: number;
+    expanded: number;
+    collision_checks: number;
+    seed: number | null;
+  };
+};

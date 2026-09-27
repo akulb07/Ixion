@@ -67,3 +67,6 @@ and planner benchmarks remain available through their Python/CLI workflows;
 they are not yet service job types. The [React workspace](workspace.md), added in
 milestone 17, is served at `/`. Swagger documentation may require internet access for its
 browser assets; the JSON API and OpenAPI schema work locally.
+
+Milestone 18 adds `POST /api/plans` for bounded static path searches, independently
+of simulation jobs. See [planning request and export contracts](planning-workspace.md).

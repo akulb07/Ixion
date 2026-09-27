@@ -113,6 +113,12 @@ def simulation_metrics(result: SimulationResult) -> dict[str, float]:
                 ]
             )
         )
+    if result.navigation_samples:
+        sample = result.navigation_samples[-1]
+        goal = result.config.navigation.path[-1]
+        metrics["estimated_goal_error_m"] = sample.tracking.goal_distance
+        metrics["truth_goal_error_m"] = math.hypot(final.pose.x - goal.x, final.pose.y - goal.y)
+        metrics["navigation_reached"] = float(result.navigation_outcome == "reached")
     return metrics
 
 
@@ -190,7 +196,7 @@ def run_experiment(
             # Invalid individual configurations are retained, while path typos abort before any run.
             try:
                 resolved = RunConfig.model_validate(document)
-                total_steps += sum(command.steps for command in resolved.commands)
+                total_steps += resolved.step_budget
                 validation_error = None
             except ValueError as exc:
                 resolved, validation_error = None, str(exc)

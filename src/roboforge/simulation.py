@@ -11,6 +11,7 @@ from roboforge.control import EncoderWheelController, WheelControlSample
 from roboforge.core import finite, positive
 from roboforge.faults import FaultEngine, FaultEvent
 from roboforge.geometry import Pose2
+from roboforge.navigation import NavigationSample, PathFollower
 from roboforge.physics import CollisionReport, CollisionWorld, KinematicMotion
 from roboforge.robot import DifferentialDriveRobot, RobotState
 from roboforge.robotics import BodyTwist2, WheelSpeeds
@@ -69,13 +70,15 @@ class CollisionEvent:
 class SimulationResult:
     config: RunConfig
     states: tuple[RobotState, ...]
-    status: Literal["completed", "collision"] = "completed"
+    status: Literal["completed", "collision", "budget_exceeded"] = "completed"
     collisions: tuple[CollisionEvent, ...] = ()
     motions: tuple[KinematicMotion, ...] = ()
     readings: tuple[SensorReading, ...] = ()
     actuator_samples: tuple[ActuatorSample, ...] = ()
     control_samples: tuple[WheelControlSample, ...] = ()
     fault_events: tuple[FaultEvent, ...] = ()
+    navigation_samples: tuple[NavigationSample, ...] = ()
+    navigation_outcome: str | None = None
 
 
 class SimulationCancelled(Exception):
@@ -112,117 +115,132 @@ class Simulator:
         )
         if sensors:
             sensors.capture_initial()
+        follower = PathFollower(self.config) if self.config.navigation else None
         collision = self.config.simulation.collision
         world = CollisionWorld(self.config.environment) if collision.mode == "stop" else None
-        for command in self.config.commands:
-            requested = WheelSpeeds(command.left, command.right)
-            for _ in range(command.steps):
-                if should_cancel is not None and should_cancel():
-                    raise SimulationCancelled("simulation cancelled")
-                actuator_request = (
-                    controller.update(clock.time, requested, sensors.deliver(clock.time))
-                    if controller
-                    else requested
+        requests = (
+            (None for _ in range(self.config.step_budget))
+            if follower
+            else (
+                WheelSpeeds(command.left, command.right)
+                for command in self.config.commands
+                for _ in range(command.steps)
+            )
+        )
+        for requested in requests:
+            if should_cancel is not None and should_cancel():
+                raise SimulationCancelled("simulation cancelled")
+            delivered = sensors.deliver(clock.time) if sensors and (controller or follower) else ()
+            if follower:
+                requested = follower.update(clock.time, delivered)
+                if follower.reached:
+                    break
+            actuator_request = (
+                controller.update(clock.time, requested, delivered) if controller else requested
+            )
+            if follower and not follower.samples[-1].measurement_fresh:
+                actuator_request = WheelSpeeds(0, 0)
+            actuator_sample = actuators.step(
+                faults.command(actuator_request, clock.time), clock.dt, clock.time
+            )
+            shaft = faults.wheels(actuator_sample.applied, clock.time, "actuator_saturation")
+            actuator_sample = replace(
+                actuator_sample,
+                requested=actuator_request,
+                applied=shaft,
+                speed_limited=(
+                    actuator_sample.speed_limited[0] or shaft.left != actuator_sample.applied.left,
+                    actuator_sample.speed_limited[1]
+                    or shaft.right != actuator_sample.applied.right,
+                ),
+            )
+            actuators.applied = shaft
+            actuator_samples.append(actuator_sample)
+            wheels = faults.wheels(shaft, clock.time, "wheel_slip")
+            encoder_wheels = shaft if shaft != wheels else None
+            motion = KinematicMotion(
+                state.pose,
+                robot.kinematics,
+                wheels,
+                clock.dt,
+                self.config.simulation.integrator,
+                encoder_wheels,
+            )
+            if world is not None:
+                sweep = world.sweep(
+                    motion,
+                    self.config.robot.footprint_radius,
+                    spatial_tolerance=collision.spatial_tolerance,
+                    max_queries=collision.max_queries,
                 )
-                actuator_sample = actuators.step(
-                    faults.command(actuator_request, clock.time), clock.dt, clock.time
-                )
-                shaft = faults.wheels(actuator_sample.applied, clock.time, "actuator_saturation")
-                actuator_sample = replace(
-                    actuator_sample,
-                    requested=actuator_request,
-                    applied=shaft,
-                    speed_limited=(
-                        actuator_sample.speed_limited[0]
-                        or shaft.left != actuator_sample.applied.left,
-                        actuator_sample.speed_limited[1]
-                        or shaft.right != actuator_sample.applied.right,
-                    ),
-                )
-                actuators.applied = shaft
-                actuator_samples.append(actuator_sample)
-                wheels = faults.wheels(shaft, clock.time, "wheel_slip")
-                encoder_wheels = shaft if shaft != wheels else None
-                motion = KinematicMotion(
-                    state.pose,
-                    robot.kinematics,
-                    wheels,
-                    clock.dt,
-                    self.config.simulation.integrator,
-                    encoder_wheels,
-                )
-                if world is not None:
-                    sweep = world.sweep(
-                        motion,
-                        self.config.robot.footprint_radius,
-                        spatial_tolerance=collision.spatial_tolerance,
-                        max_queries=collision.max_queries,
+                if sweep.blocked:
+                    lower, upper = sweep.interval
+                    middle = (lower + upper) / 2
+                    stop_time = clock.time_at_fraction(sweep.safe_fraction)
+                    stopped = RobotState(
+                        motion.pose_at(sweep.safe_fraction),
+                        WheelSpeeds(0, 0),
+                        BodyTwist2(0, 0),
+                        stop_time,
                     )
-                    if sweep.blocked:
-                        lower, upper = sweep.interval
-                        middle = (lower + upper) / 2
-                        stop_time = clock.time_at_fraction(sweep.safe_fraction)
-                        stopped = RobotState(
-                            motion.pose_at(sweep.safe_fraction),
-                            WheelSpeeds(0, 0),
-                            BodyTwist2(0, 0),
-                            stop_time,
-                        )
-                        if stopped.time == states[-1].time:
-                            states[-1] = stopped
-                        else:
-                            states.append(stopped)
-                            motions.append(
-                                KinematicMotion(
-                                    state.pose,
-                                    robot.kinematics,
-                                    wheels,
-                                    clock.dt * sweep.safe_fraction,
-                                    self.config.simulation.integrator,
-                                    encoder_wheels,
-                                )
+                    if stopped.time == states[-1].time:
+                        states[-1] = stopped
+                    else:
+                        states.append(stopped)
+                        motions.append(
+                            KinematicMotion(
+                                state.pose,
+                                robot.kinematics,
+                                wheels,
+                                clock.dt * sweep.safe_fraction,
+                                self.config.simulation.integrator,
+                                encoder_wheels,
                             )
-                            if sensors:
-                                sensors.advance(motions[-1], start_time=clock.time)
-                        event = CollisionEvent(
-                            clock.tick + 1,
-                            stop_time,
-                            (clock.time_at_fraction(lower), clock.time_at_fraction(upper)),
-                            clock.time_at_fraction(middle),
-                            motion.pose_at(middle),
-                            sweep.reason,
-                            requested,
-                            sweep.report,
-                            sweep.queries,
                         )
-                        return SimulationResult(
-                            self.config,
-                            tuple(states),
-                            "collision",
-                            (event,),
-                            tuple(motions),
-                            tuple(
-                                sorted(sensors.readings, key=lambda r: (r.capture_time, r.sensor))
-                            )
-                            if sensors
-                            else (),
-                            tuple(actuator_samples),
-                            tuple(controller.samples) if controller else (),
-                            faults.events(stop_time),
-                        )
-                if sensors:
-                    sensors.advance(motion, start_time=clock.time)
-                clock = clock.advanced()
-                state = robot.step(
-                    state, wheels, clock.dt, clock.time, self.config.simulation.integrator
-                )
-                if shaft != wheels:
-                    state = replace(state, wheels=shaft)
-                states.append(state)
-                motions.append(motion)
+                        if sensors:
+                            sensors.advance(motions[-1], start_time=clock.time)
+                    event = CollisionEvent(
+                        clock.tick + 1,
+                        stop_time,
+                        (clock.time_at_fraction(lower), clock.time_at_fraction(upper)),
+                        clock.time_at_fraction(middle),
+                        motion.pose_at(middle),
+                        sweep.reason,
+                        requested,
+                        sweep.report,
+                        sweep.queries,
+                    )
+                    return SimulationResult(
+                        self.config,
+                        tuple(states),
+                        "collision",
+                        (event,),
+                        tuple(motions),
+                        tuple(sorted(sensors.readings, key=lambda r: (r.capture_time, r.sensor)))
+                        if sensors
+                        else (),
+                        tuple(actuator_samples),
+                        tuple(controller.samples) if controller else (),
+                        faults.events(stop_time),
+                        navigation_samples=tuple(follower.samples) if follower else (),
+                        navigation_outcome="collision" if follower else None,
+                    )
+            if sensors:
+                sensors.advance(motion, start_time=clock.time)
+            clock = clock.advanced()
+            state = robot.step(
+                state, wheels, clock.dt, clock.time, self.config.simulation.integrator
+            )
+            if shaft != wheels:
+                state = replace(state, wheels=shaft)
+            states.append(state)
+            motions.append(motion)
+        if follower and follower.samples[-1].time != clock.time:
+            follower.update(clock.time, sensors.deliver(clock.time))
         return SimulationResult(
             self.config,
             tuple(states),
+            status="budget_exceeded" if follower and not follower.reached else "completed",
             motions=tuple(motions),
             readings=tuple(sorted(sensors.readings, key=lambda r: (r.capture_time, r.sensor)))
             if sensors
@@ -230,4 +248,8 @@ class Simulator:
             actuator_samples=tuple(actuator_samples),
             control_samples=tuple(controller.samples) if controller else (),
             fault_events=faults.events(clock.time),
+            navigation_samples=tuple(follower.samples) if follower else (),
+            navigation_outcome=("reached" if follower.reached else "budget_exceeded")
+            if follower
+            else None,
         )

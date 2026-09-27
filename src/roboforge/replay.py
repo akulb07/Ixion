@@ -25,6 +25,7 @@ class ReplayFrame:
     readings: tuple[SensorReading, ...]
     control: dict | None
     actuator: dict | None
+    navigation: dict | None = None
 
 
 class ReplayLog:
@@ -145,6 +146,12 @@ class ReplayLog:
             else []
         )
 
+        self._navigation = (
+            json.loads((directory / "navigation.json").read_text(encoding="utf-8"))["samples"]
+            if (directory / "navigation.json").exists()
+            else []
+        )
+
     def state_at(self, time: float) -> RobotState:
         """Interpolate truth without scanning sensor or controller histories."""
         time = finite(time, "replay time")
@@ -177,4 +184,6 @@ class ReplayLog:
             found = next((record for record in reversed(records) if record["time"] <= time), None)
             return json.loads(json.dumps(found)) if found is not None else None
 
-        return ReplayFrame(state, ready, latest(self._control), latest(self._actuators))
+        return ReplayFrame(
+            state, ready, latest(self._control), latest(self._actuators), latest(self._navigation)
+        )

@@ -1,11 +1,17 @@
-# Interactive workspace — milestone 17
+# the browser workspace (still changing)
 
 Install `roboforge[api]`, run `roboforge serve --output results/service`, and open
 http://127.0.0.1:8765/. The React/TypeScript interface and its assets ship inside
 the wheel. Node is required only to change the frontend; normal use needs no
 frontend build, CDN, external fonts, or internet connection.
 
-## Working with an experiment
+I use a VS Code-style layout here: setup on the left, world and output in the
+middle, inspector and run history on the right. The activity bar switches setup
+modes or focuses the inspector/history. The bottom bar shows the current mode,
+run status and version. Panels scroll independently on desktop and stack on
+smaller screens. The buttons work with keyboard focus and Enter too.
+
+## Trying an experiment
 
 Choose the sensor or wheel-slip laboratory. Edit the seed, timestep, wheel rates
 and step count, then select **Run experiment**. Validation errors appear before
@@ -42,7 +48,7 @@ configuration up to 1 MB; Export JSON saves the current editor text, including a
 unapplied edits. Saved-run setup, trajectory and integrity manifest downloads are
 available in the history panel.
 
-## Development and checks
+## If you're changing the frontend
 
 From `frontend`, use Node 22+ and pnpm 11+:
 
@@ -64,7 +70,10 @@ Frontend numerical tests verify sensor transforms, ray rendering bounds and
 terminal replay time. Browser validation covers simulation, replay, repeated
 selection, cloning, invalid JSON, and desktop/mobile layout.
 
-## Current scope
+## Things it doesn't do yet
+
+Milestone 18 adds a dedicated [Path planning tab](planning-workspace.md) with goal
+coordinates, planner selection, clearance, search budgets and reproducible exports.
 
 This workspace operates prescribed-wheel-command runs with optional PID, sensors,
 actuators, collision stopping and timed faults. It does not yet provide navigation

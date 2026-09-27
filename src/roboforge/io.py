@@ -49,6 +49,7 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         "collision_enabled": result.config.simulation.collision.mode == "stop",
         "collision_method": "lipschitz-interval-v1",
         "status": result.status,
+        "navigation_outcome": result.navigation_outcome,
         "collision_count": len(result.collisions),
         "mass_properties": asdict(DifferentialDriveRobot(result.config.robot).mass_properties),
     }
@@ -89,6 +90,18 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
         ),
         encoding="utf-8",
     )
+    if result.navigation_samples:
+        (directory / "navigation.json").write_text(
+            json.dumps(
+                {
+                    "outcome": result.navigation_outcome,
+                    "samples": [asdict(s) for s in result.navigation_samples],
+                },
+                indent=2,
+                allow_nan=False,
+            ),
+            encoding="utf-8",
+        )
     with (directory / "trajectory.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(

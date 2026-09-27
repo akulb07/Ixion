@@ -20,7 +20,7 @@ from roboforge.io import save_result
 from roboforge.replay import ReplayLog
 from roboforge.simulation import SimulationCancelled, Simulator
 
-READY = {"completed", "collision"}
+READY = {"completed", "collision", "budget_exceeded"}
 ACTIVE = {"queued", "running"}
 RUN_ID = re.compile(r"^run-[0-9a-f]{32}$")
 
@@ -32,8 +32,10 @@ class ServiceError(Exception):
 
 
 def resource_estimate(config: RunConfig) -> dict:
-    steps = sum(command.steps for command in config.commands)
+    steps = config.step_budget
     duration = steps * config.simulation.dt
+    if config.navigation and steps * len(config.navigation.path) > 2_000_000:
+        raise ServiceError("navigation tracking workload exceeds 2,000,000 waypoint steps", 422)
     if steps > 50000 or duration > 300:
         raise ServiceError(
             "local API runs are limited to 50,000 steps and 300 simulated seconds", 422
@@ -233,6 +235,8 @@ class RunService:
             metrics = simulation_metrics(result)
             _write(path / "metrics.json", metrics)
             status = result.status
+            with self._lock:
+                record["navigation_outcome"] = result.navigation_outcome
         except SimulationCancelled:
             status = "cancelled"
         except Exception as exc:
@@ -305,6 +309,7 @@ class RunService:
                 "faults.json",
                 "collisions.json",
                 "motion_segments.json",
+                "navigation.json",
                 "manifest.json",
             }
         if filename not in allowed:

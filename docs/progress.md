@@ -1,32 +1,30 @@
-# Validated implementation checkpoints
+# progress notes / things that got added
 
-The user authorized continued milestone work as usage permits. Each checkpoint
-passes its tests and demonstration before the next begins.
+I kept adding pieces as I got them working. Here's the rough order, plus the
+test counts I had written down at each point.
 
-| Milestone | Implemented | Validation |
-|---|---|---|
-| 1 | Planar math, configuration, clock, ideal simulator | 73 tests, 110 subtests |
-| 2 | Physical description, frames, static/swept collision | 117 tests, 153 subtests |
-| 3 | Seeded encoders, IMU, LiDAR, timestamped readings | 131 tests, 157 subtests; repeatable 528-reading demo |
-| 4 | Delayed, asymmetric, limited wheel response | 144 tests, 157 subtests; 450-step demo |
-| 5 | Encoder-only PID, anti-windup, derivative filtering | 155 tests, 157 subtests; wheel errors below 0.00008 rad/s |
-| 6 | Encoder odometry, dropout gaps, stream checks | 165 tests, 157 subtests; calibration drift demonstration |
-| 7 | Dijkstra, A*, seeded RRT, fixed-radius RRT* | 179 tests, 157 subtests; all demo paths swept collision-checked |
-| 8 | Pure Pursuit and delivered-encoder navigation lab | 184 tests, 157 subtests; repeatable collision-free arrival in 30.26 s |
-| 9 | Three-state EKF, encoder/gyro fusion, landmark correction primitive | 198 tests, 157 subtests; calibration demo error 0.402 m odometry vs 0.00102 m EKF |
-| 10 | LiDAR log-odds occupancy mapping | 211 tests, 157 subtests; 51-scan repeatable EKF-pose map |
-| 11 | ICP and incremental scan-to-map SLAM front end | 217 tests, 157 subtests; 60 matched scans, drift reduced from 0.340 m to 0.0242 m |
-| 12 | Anchored pose graph, verified loop candidates, historical map rebuild | 224 tests, 157 subtests; seven loops, endpoint error 0.341 m to 0.0123 m |
-| 13 | Bounded seed/parameter experiments, retained failures, metrics, replay | 230 tests, 157 subtests; 12-trial paired PID sweep |
-| 14 | Timed sensor/motor/slip faults, event logs, slip-aware replay | 240 tests, 157 subtests; encoder-scale sensitivity sweep and combined-fault demo |
-| 15 | Versioned static planner benchmarks and input/replay hardening | 247 tests, 157 subtests; 14 successful paths, two retained budget failures |
-| 16 | Local FastAPI service, bounded queue, durable jobs, cancellation and recorded replay | 257 tests, 157 subtests; API lifecycle, restart, queue, integrity and request-bound checks |
-| 17 | React/TypeScript workspace, recorded world and sensor display, playback, history and setup editing | 258 Python tests, 157 subtests; three frontend numerical tests; browser run/replay and responsive checks |
+- 01 — basic differential-drive simulator, simple configs. 73 tests / 110
+  subtests at that point.
+- 02 — robot descriptions, frames and swept collision checks. 117 / 153.
+- 03 — seeded encoders, IMU and LiDAR with timestamps. 131 / 157.
+- 04 — delayed, asymmetric wheel actuator response. 144 / 157.
+- 05 — encoder feedback PID, anti-windup and derivative filtering. 155 / 157.
+- 06 — encoder odometry and dropout handling. 165 / 157.
+- 07 — Dijkstra, A*, RRT and fixed-radius RRT*. 179 / 157.
+- 08 — encoder navigation example. 184 / 157.
+- 09 — EKF with encoder/gyro fusion and landmark correction. 198 / 157.
+- 10 — LiDAR occupancy mapping. 211 / 157.
+- 11 — ICP and incremental scan-to-map SLAM. 217 / 157.
+- 12 — loop closure and pose graph example. 224 / 157.
+- 13 — seed/parameter experiments, retained failures and replay. 230 / 157.
+- 14 — faults and encoder bias. 240 / 157.
+- 15 — planner comparisons. 247 / 157.
+- 16 — service/API foundations. 257 / 157.
+- 17 — local browser workspace, replay and history. 258 / 157.
+- 18 — path planning panel, bounded planning endpoint and a VS Code-style UI.
+  273 / 157, plus the three frontend numerical checks. A* in the browser found
+  a 7.686 m path with 24 waypoints. Planning is still a preview; it doesn't drive
+  the robot along the route.
 
-Next: navigation scenario integration and research workflow UI, then AI and hardware adapters.
-
-Per-model documents explain assumptions and limitations. The product concept
-image remains the broader design target; the simulation workspace is implemented. The navigation laboratory is
-an explicit component integration example; the CLI supports prescribed wheel
-commands and optional wheel PID, not a navigation scenario schema yet. Arrival
-means entering the configured 5 cm tolerance, not a physically settled stop.
+Next up: running navigation scenarios in the workspace, then the research
+workflow UI. Test counts above are from each milestone, not current totals.

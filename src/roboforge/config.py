@@ -277,6 +277,29 @@ class FaultConfig(Schema):
         return self
 
 
+class PathPoint(Schema):
+    x: Real
+    y: Real
+
+
+class NavigationConfig(Schema):
+    path: tuple[PathPoint, ...] = Field(min_length=2, max_length=2000)
+    encoder: SensorName = "encoders"
+    max_steps: Annotated[int, Field(strict=True, ge=1, le=50000)] = 5000
+    lookahead: Positive = Field(default=0.25, le=10)
+    max_speed: Positive = Field(default=0.25, le=5)
+    max_yaw_rate: Positive = Field(default=1.5, le=10)
+    goal_tolerance: Positive = Field(default=0.05, le=1)
+    max_sensor_age: Positive = Field(default=0.5, le=10)
+    clearance: Nonnegative = Field(default=0.1, le=100)
+
+    @model_validator(mode="after")
+    def distinct_points(self):
+        if any(a == b for a, b in zip(self.path, self.path[1:])):
+            raise ValueError("consecutive navigation waypoints must differ")
+        return self
+
+
 class RunConfig(Schema):
     schema_version: Literal[1] = 1
     name: str = Field(default="foundation_demo", min_length=1)
@@ -284,7 +307,8 @@ class RunConfig(Schema):
     robot: RobotConfig = RobotConfig()
     environment: Environment = Environment()
     simulation: SimulationConfig = SimulationConfig()
-    commands: tuple[WheelCommand, ...] = Field(min_length=1)
+    commands: tuple[WheelCommand, ...] = ()
+    navigation: NavigationConfig | None = None
     sensors: tuple[SensorConfig, ...] = ()
     actuators: ActuatorConfig = ActuatorConfig()
     wheel_controller: WheelControllerConfig | None = None
@@ -295,7 +319,24 @@ class RunConfig(Schema):
         pose = self.robot.initial_pose
         if not (0 <= pose.x <= self.environment.width and 0 <= pose.y <= self.environment.height):
             raise ValueError("initial robot centre must lie inside environment bounds")
-        finite(sum(command.steps for command in self.commands) * self.simulation.dt, "run duration")
+        if bool(self.commands) == (self.navigation is not None):
+            raise ValueError("provide either wheel commands or navigation, exclusively")
+        finite(self.step_budget * self.simulation.dt, "run duration")
+        if self.navigation is not None:
+            nav = self.navigation
+            if self.simulation.collision.mode != "stop":
+                raise ValueError("navigation requires collision stop mode")
+            if (nav.path[0].x, nav.path[0].y) != (pose.x, pose.y):
+                raise ValueError("navigation path must start at the initial robot position")
+            if any(
+                not (0 <= p.x <= self.environment.width and 0 <= p.y <= self.environment.height)
+                for p in nav.path
+            ):
+                raise ValueError("navigation waypoints must lie inside the world")
+            if not any(
+                isinstance(s, EncoderConfig) and s.name == nav.encoder for s in self.sensors
+            ):
+                raise ValueError("navigation requires its named encoder sensor")
         names = set()
         frames = {"base", "left_wheel", "right_wheel", *(mount.name for mount in self.robot.mounts)}
         for sensor in self.sensors:
@@ -329,6 +370,10 @@ class RunConfig(Schema):
                 if target is None or (expected is not None and not isinstance(target, expected)):
                     raise ValueError("fault target must name a compatible configured sensor")
         return self
+
+    @property
+    def step_budget(self) -> int:
+        return self.navigation.max_steps if self.navigation else sum(c.steps for c in self.commands)
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):

@@ -16,10 +16,10 @@ an environment, a simple simulator, and visualization. That revised boundary
 takes precedence. The long-term platform remains a research system; building
 all its algorithm layers now would prevent independent validation.
 
-The user subsequently authorized the next proposed milestone: physical robot
-descriptions and circular-footprint collision queries. Milestone 2 adds that
-bounded scope, with optional conservative simulation stopping. Sensors and force
-dynamics remain future phases; the original validated equations are retained.
+Milestone 2 added physical robot descriptions and circular-footprint collision
+queries, with optional conservative simulation stopping. Sensors and force
+dynamics were left for later phases; the original validated equations were
+retained.
 
 The first implementation must prove the chain from configuration to numerical
 model to trajectory to measured analytical error. It must establish interfaces

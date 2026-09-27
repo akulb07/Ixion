@@ -12,6 +12,7 @@ from starlette.staticfiles import StaticFiles
 
 from roboforge import __version__
 from roboforge.config import RunConfig
+from roboforge.planning_service import PlanningRequest, PlanningService
 from roboforge.service import RunService, ServiceError, resource_estimate
 
 
@@ -95,6 +96,7 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     @asynccontextmanager
     async def lifespan(app):
         app.state.service = RunService(directory)
+        app.state.planner = PlanningService()
         try:
             yield
         finally:
@@ -171,6 +173,10 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     def submit(config: RunConfig, request: Request):
         return request.app.state.service.submit(config)
 
+    @app.post("/api/plans")
+    def plan(specification: PlanningRequest, request: Request):
+        return request.app.state.planner.plan(specification)
+
     @app.get("/api/runs")
     def list_runs(
         request: Request, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)
@@ -214,6 +220,7 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
             },
             "control": snapshot.control,
             "actuator": snapshot.actuator,
+            "navigation": snapshot.navigation,
             "active_faults": active,
         }
 
