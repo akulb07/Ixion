@@ -290,31 +290,58 @@ def run_experiment(
 
 def paired_differences(report: dict, baseline: str, challenger: str, metric: str) -> dict:
     """Challenger-minus-baseline by shared seed; exclusions remain explicit."""
+    if baseline == challenger:
+        raise ValueError("choose two different groups")
     groups = [
         {r["seed"]: r for r in report["trials"] if r["group"] == group}
         for group in (baseline, challenger)
     ]
     if not all(groups):
         raise ValueError("paired comparison requires two existing groups")
-    differences, excluded = [], []
+    for group, indexed in zip((baseline, challenger), groups):
+        if len(indexed) != sum(r["group"] == group for r in report["trials"]):
+            raise ValueError("duplicate seed within a group")
+    if not any(metric in r["metrics"] for group in groups for r in group.values()):
+        raise ValueError("metric is unavailable in both selected groups")
+    differences, excluded, exclusions = [], [], []
     for seed in sorted(set(groups[0]) | set(groups[1])):
         pair = [g.get(seed) for g in groups]
-        if any(r is None or r["status"] != "completed" or metric not in r["metrics"] for r in pair):
+        reasons = []
+        for label, record in zip(("baseline", "challenger"), pair):
+            if record is None:
+                reasons.append(f"{label}: missing trial")
+            elif record["status"] != "completed":
+                reasons.append(f"{label}: {record['status']}")
+            elif metric not in record["metrics"]:
+                reasons.append(f"{label}: missing metric")
+            elif not math.isfinite(record["metrics"][metric]):
+                reasons.append(f"{label}: non-finite metric")
+        if not reasons:
+            delta = pair[1]["metrics"][metric] - pair[0]["metrics"][metric]
+            if not math.isfinite(delta):
+                reasons.append("difference is non-finite")
+        if reasons:
             excluded.append(seed)
+            exclusions.append({"seed": seed, "reasons": reasons})
         else:
             differences.append(
                 {
                     "seed": seed,
-                    "difference": pair[1]["metrics"][metric] - pair[0]["metrics"][metric],
+                    "baseline_value": pair[0]["metrics"][metric],
+                    "challenger_value": pair[1]["metrics"][metric],
+                    "difference": delta,
                 }
             )
+    samples = [d["difference"] for d in differences]
+    # Scale before summing so large, finite measurements do not overflow the mean.
+    mean = math.fsum(value / len(samples) for value in samples) if samples else None
     return {
         "baseline": baseline,
         "challenger": challenger,
         "metric": metric,
         "pairs": differences,
         "excluded_seeds": excluded,
-        "mean_difference": float(np.mean([d["difference"] for d in differences]))
-        if differences
-        else None,
+        "exclusions": exclusions,
+        "matched_pairs": len(samples),
+        "mean_difference": mean,
     }

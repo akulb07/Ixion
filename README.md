@@ -5,7 +5,8 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.21.0.**
+**Version: 0.22.0.** Sweep results now include individual measurement plots and
+paired comparisons by seed, with downloadable reports and explicit exclusions.
 
 ## Getting it to run
 

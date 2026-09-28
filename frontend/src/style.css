@@ -1194,6 +1194,51 @@ footer {
   font-size: 11px;
   line-height: 1.6;
 }
+.sweep-plot {
+  margin: 24px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+}
+.sweep-plot svg {
+  width: 100%;
+  display: block;
+  margin-top: 12px;
+}
+.sweep-plot text {
+  fill: #c9c6c1;
+  font-size: 11px;
+}
+.plot-axis {
+  stroke: #a6a29b;
+}
+.plot-guide {
+  stroke: #494b50;
+}
+.plot-completed {
+  fill: #d2ad88;
+  stroke: #d2ad88;
+}
+.plot-incomplete {
+  fill: #2b2d31;
+  stroke: #e1b95b;
+  stroke-width: 2px;
+}
+.paired-selectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.paired-selectors label {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 250px;
+  min-width: 0;
+}
+.paired-selectors select {
+  width: 100%;
+  min-width: 0;
+}
 .navigation-inspector h2 {
   color: #9cbaa7;
   margin-bottom: 8px;

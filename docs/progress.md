@@ -31,7 +31,9 @@ test counts I had written down at each point.
 - 21 — bounded parameter/seed sweep jobs, previewed trial designs, group
   statistics, cancellation and saved reports in the browser workspace.
 
-Next up: research plots and paired comparisons across sweep groups, then mapping
-and localization views. Arms and grippers remain a later manipulation phase;
+- 22 — individual measurement plots and seed-paired comparisons in the sweep
+  workspace. Reports retain measurements, signed differences and exclusion reasons.
+
+Next up: mapping and localization views. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

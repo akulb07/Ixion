@@ -1,5 +1,22 @@
 # Small experiment sweeps
 
+The results view plots each measured trial in group order. Filled dots mean a
+normal completion; hollow dots mean another outcome with a saved measurement.
+Repeated values are offset vertically so they remain visible. The horizontal
+axis includes zero, and the report keeps the exact values.
+
+Pick a metric, baseline group and challenger group for a paired comparison.
+Each difference is challenger minus baseline for the same seed. Only pairs where
+both trials completed normally and have the metric are included. Excluded seeds
+show their reasons, including pending trials while a sweep is running. An empty
+comparison has no mean, rather than a mean of zero. The paired report can be
+downloaded separately. This is descriptive, with no significance claim; matching
+seeds does not guarantee identical noise when sensor timing changes.
+
+`GET /api/experiments/{id}/paired?baseline=group-0000&challenger=group-0001&metric=path_length_m`
+returns this snapshot without running any new simulations. Invalid groups,
+identical groups and metrics unavailable in both groups return 422.
+
 The chart icon in the activity bar opens the sweep workspace. It uses the current
 draft as the base setup. To sweep a saved navigation run, open it, click **Use
 setup**, then open sweeps.

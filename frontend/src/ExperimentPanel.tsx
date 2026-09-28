@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { active, post, ready, request } from "./api";
 import type { Batch, BatchPreview, BatchSummary, Config } from "./types";
+import { SweepAnalysis } from "./SweepAnalysis";
 
 type Design = {
   name: string;
@@ -520,6 +521,12 @@ export function ExperimentPanel({
                   </tbody>
                 </table>
               </div>
+              <SweepAnalysis
+                key={batch.id}
+                batch={batch}
+                metric={selectedMetric}
+                visible={visible}
+              />
               <h2>Trials</h2>
               <div className="comparison-table-scroll">
                 <table className="comparison-table">

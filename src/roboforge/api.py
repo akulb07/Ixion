@@ -14,6 +14,7 @@ from roboforge import __version__
 from roboforge.batch_service import BatchRequest, BatchService, prepare_batch
 from roboforge.comparison import ComparisonRequest, compare_runs
 from roboforge.config import RunConfig
+from roboforge.experiments import paired_differences
 from roboforge.planning_service import PlanningRequest, PlanningService
 from roboforge.service import RunService, ServiceError, resource_estimate
 
@@ -221,6 +222,24 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     def batch_artifact(batch_id: str, filename: str, request: Request):
         return FileResponse(
             request.app.state.batches.artifact(batch_id, filename), filename=filename
+        )
+
+    @app.get("/api/experiments/{batch_id}/paired")
+    def paired_batch(
+        batch_id: str,
+        request: Request,
+        baseline: str = Query(min_length=1, max_length=64),
+        challenger: str = Query(min_length=1, max_length=64),
+        metric: str = Query(min_length=1, max_length=128),
+    ):
+        batch = request.app.state.batches.get(batch_id)
+        try:
+            result = paired_differences(batch, baseline, challenger, metric)
+        except ValueError as exc:
+            raise ServiceError(str(exc), 422) from exc
+        return JSONResponse(
+            {"format_version": 1, "batch_id": batch_id, "batch_status": batch["status"], **result},
+            headers={"Content-Disposition": f'attachment; filename="{batch_id}-paired.json"'},
         )
 
     @app.get("/api/runs")
