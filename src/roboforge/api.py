@@ -11,6 +11,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
 from roboforge import __version__
+from roboforge.batch_service import BatchRequest, BatchService, prepare_batch
+from roboforge.comparison import ComparisonRequest, compare_runs
 from roboforge.config import RunConfig
 from roboforge.planning_service import PlanningRequest, PlanningService
 from roboforge.service import RunService, ServiceError, resource_estimate
@@ -98,7 +100,11 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         app.state.service = RunService(directory)
         app.state.planner = PlanningService()
         try:
-            yield
+            app.state.batches = BatchService(app.state.service)
+            try:
+                yield
+            finally:
+                app.state.batches.close()
         finally:
             app.state.service.close()
 
@@ -154,7 +160,8 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         return {
             "status": "ok",
             "version": __version__,
-            "recovery_warnings": request.app.state.service.recovery_warnings,
+            "recovery_warnings": request.app.state.service.recovery_warnings
+            + request.app.state.batches.recovery_warnings,
         }
 
     @app.get("/api/config/schema")
@@ -176,6 +183,45 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     @app.post("/api/plans")
     def plan(specification: PlanningRequest, request: Request):
         return request.app.state.planner.plan(specification)
+
+    @app.post("/api/comparisons")
+    def compare(specification: ComparisonRequest, request: Request):
+        return compare_runs(request.app.state.service, specification)
+
+    @app.post("/api/experiments/preview")
+    def preview_batch(specification: BatchRequest):
+        return prepare_batch(specification)[0]
+
+    @app.post("/api/experiments", status_code=202)
+    def submit_batch(specification: BatchRequest, request: Request):
+        return request.app.state.batches.submit(specification)
+
+    @app.get("/api/experiments")
+    def list_batches(
+        request: Request, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100)
+    ):
+        return request.app.state.batches.list(offset, limit)
+
+    @app.get("/api/experiments/{batch_id}")
+    def get_batch(batch_id: str, request: Request):
+        return request.app.state.batches.get(batch_id)
+
+    @app.post("/api/experiments/{batch_id}/cancel")
+    def cancel_batch(batch_id: str, request: Request):
+        return request.app.state.batches.cancel(batch_id)
+
+    @app.get("/api/experiments/{batch_id}/report")
+    def batch_report(batch_id: str, request: Request):
+        return JSONResponse(
+            request.app.state.batches.get(batch_id),
+            headers={"Content-Disposition": f'attachment; filename="{batch_id}-report.json"'},
+        )
+
+    @app.get("/api/experiments/{batch_id}/artifacts/{filename}")
+    def batch_artifact(batch_id: str, filename: str, request: Request):
+        return FileResponse(
+            request.app.state.batches.artifact(batch_id, filename), filename=filename
+        )
 
     @app.get("/api/runs")
     def list_runs(

@@ -173,18 +173,8 @@ def _write_json(path, value):
     Path(path).write_text(json.dumps(value, indent=2, allow_nan=False), encoding="utf-8")
 
 
-def run_experiment(
-    config: ExperimentConfig,
-    output: str | Path,
-    *,
-    runner: Callable[[RunConfig], SimulationResult] | None = None,
-    metric_functions: dict[str, Callable[[SimulationResult], float]] | None = None,
-    plot: bool = False,
-) -> Path:
-    """Run sequentially; each invocation gets a new UUID directory and retains failures."""
-    from roboforge.io import save_result
-
-    runner = (lambda c: Simulator(c).run()) if runner is None else runner
+def expand_experiment(config: ExperimentConfig):
+    """Resolve every trial before execution; retain invalid values but reject unknown paths."""
     variants, total_steps = [], 0
     for group_index, combination in enumerate(itertools.product(*(a.values for a in config.axes))):
         parameters = dict(zip((a.path for a in config.axes), combination))
@@ -205,6 +195,22 @@ def run_experiment(
             )
     if total_steps > config.max_total_steps:
         raise ValueError("experiment exceeds total simulation-step budget")
+    return variants
+
+
+def run_experiment(
+    config: ExperimentConfig,
+    output: str | Path,
+    *,
+    runner: Callable[[RunConfig], SimulationResult] | None = None,
+    metric_functions: dict[str, Callable[[SimulationResult], float]] | None = None,
+    plot: bool = False,
+) -> Path:
+    """Run sequentially; each invocation gets a new UUID directory and retains failures."""
+    from roboforge.io import save_result
+
+    runner = (lambda c: Simulator(c).run()) if runner is None else runner
+    variants = expand_experiment(config)
     directory = Path(output) / f"experiment-{uuid.uuid4().hex}"
     directory.mkdir(parents=True, exist_ok=False)
     _write_json(directory / "experiment.json", config.model_dump(mode="json"))

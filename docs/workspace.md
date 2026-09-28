@@ -75,8 +75,14 @@ selection, cloning, invalid JSON, and desktop/mobile layout.
 Milestone 18 adds a dedicated [Path planning tab](planning-workspace.md) with goal
 coordinates, planner selection, clearance, search budgets and reproducible exports.
 
-This workspace operates prescribed-wheel-command runs with optional PID, sensors,
-actuators, collision stopping and timed faults. It does not yet provide navigation
-scenario execution, SLAM displays, batch comparisons or a graphical world editor.
+Milestone 19 adds encoder-guided route execution and recorded navigation replay.
+Milestone 20 adds [saved-run comparisons](comparing-runs.md), with a baseline,
+metric differences, changed inputs and an export containing the full setups.
+Milestone 21 adds [parameter and seed sweeps](sweeps.md) with preview, cancellation,
+saved batches, group summaries and trial replay links.
+
+This workspace operates wheel-command and navigation runs with optional PID,
+sensors, actuators, collision stopping and timed faults. It does not yet provide
+SLAM displays or a graphical world editor.
 The existing Python/CLI research workflows remain available. This is a local
 single-user application; see [service boundaries](local-api.md) before deployment.

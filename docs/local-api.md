@@ -19,7 +19,7 @@ authentication; it is not a deployment configuration for a shared server.
    and inspect the estimated workload.
 3. Send the same object to `POST /api/runs`. The 202 response includes the run ID.
 4. Poll `GET /api/runs/{id}`. Status progresses from queued to running, then
-   completed, collision, failed, or cancelled. Metrics appear after export.
+   completed, collision, budget_exceeded, failed, or cancelled. Metrics appear after export.
 5. Inspect `GET /api/runs/{id}/frame?time=0.5` and
    `GET /api/runs/{id}/trajectory?max_points=1000` after completion.
 6. Retrieve individual files at `GET /api/runs/{id}/artifacts/trajectory.csv`.
@@ -61,12 +61,20 @@ not wall-clock deadlines. Invalid configurations and excessive workloads receive
 422 before a job is created. Cross-origin browser writes and unexpected Host
 headers are rejected; these checks do not replace authentication.
 
-The API supports the existing prescribed-wheel-command simulation with optional
-PID, actuator models, sensors, and faults. Navigation, SLAM, experiment sweeps,
-and planner benchmarks remain available through their Python/CLI workflows;
-they are not yet service job types. The [React workspace](workspace.md), added in
+The API supports wheel-command and encoder-guided navigation simulations with
+optional PID, actuator models, sensors, and faults. SLAM and planner benchmarks
+remain Python/CLI workflows. The [React workspace](workspace.md), added in
 milestone 17, is served at `/`. Swagger documentation may require internet access for its
 browser assets; the JSON API and OpenAPI schema work locally.
 
 Milestone 18 adds `POST /api/plans` for bounded static path searches, independently
 of simulation jobs. See [planning request and export contracts](planning-workspace.md).
+
+`POST /api/comparisons` compares two to four distinct finished runs. Pass
+`{"run_ids": ["run-...", "run-..."]}` with the baseline first. Active runs return
+409, unknown runs 404, and invalid selections 422. It reads saved inputs and
+metrics; no simulations are started. See [comparison notes](comparing-runs.md).
+
+`POST /api/experiments/preview` resolves a bounded parameter/seed design, and
+`POST /api/experiments` executes its trials through the normal run queue. Batch
+history, cancellation and reports are described in [sweep notes](sweeps.md).

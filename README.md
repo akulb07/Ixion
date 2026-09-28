@@ -5,7 +5,7 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.18.0.**
+**Version: 0.21.0.**
 
 ## Getting it to run
 
@@ -34,10 +34,12 @@ so you do not have to install Node to use it. The `/docs` link is the API docs.
 There is exact and Euler differential-drive motion, a few kinds of collision
 checks, wheel actuators and PID, noisy/delayed encoders, IMU and LiDAR, wheel
 odometry, a small EKF, mapping and SLAM pieces, and several route planners.
-The simulator uses prescribed wheel commands. The path-planning tab can search
-for a static route, but the workspace does not drive the robot along it yet.
+The simulator can use prescribed wheel commands or follow a planned route using
+encoder odometry. The planning tab has a **Run this path** button now. Saved runs
+can be compared from the two-column icon in the activity bar: pick a baseline,
+check the metrics and changed settings, and export the comparison.
 
-Some examples worth poking at:
+Some examples worth looking at:
 
 ```sh
 python examples/milestone_8/run.py   # a little encoder-based navigation run
@@ -71,8 +73,11 @@ more detailed than this page.
 - The [planning workspace](docs/planning-workspace.md) has A*, Dijkstra, RRT and
   RRT*. The UI uses a VS Code-style layout with setup on the left, the world in
   the middle, and state/history on the right.
-- Actual navigation execution, the SLAM views, hardware and dynamic obstacles
-  still need work. Force/contact physics is not simulated.
+- [Run comparisons](docs/comparing-runs.md) show saved outcomes, including failed
+  trials. [Parameter sweeps](docs/sweeps.md) run a small batch across settings
+  and seeds, then show group statistics and links to every recorded trial.
+- SLAM views, hardware and dynamic obstacles still need work. Force/contact
+  physics is not simulated.
 
 This is a local, single-user service with no authentication. Don't put it on a
 shared server as-is. See [service notes](docs/local-api.md).

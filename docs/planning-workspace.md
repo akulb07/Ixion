@@ -1,4 +1,4 @@
-# Planning workspace — milestone 18
+# Planning and navigation workspace
 
 Open the **Path planning** tab in Experiment setup. Choose A*, Dijkstra, RRT or
 RRT*, enter the goal coordinates, extra clearance and search budget, then select
@@ -9,8 +9,24 @@ Simulation tab or advanced configuration before planning.
 A purple dashed line shows a successful planned path. The orange goal marker and
 circle show its position and planning footprint. Planning radius is the robot's
 footprint radius plus extra clearance. This is a known, static world calculation;
-it does not consume simulated sensor observations or execute a navigation run.
-Switching to Simulation returns to the prescribed wheel-command workflow.
+the planner does not consume simulated sensor observations. **Run this path**
+executes a separate simulation using the route and encoder-guided Pure Pursuit.
+Switching to Simulation returns to the draft's wheel-command or navigation setup.
+
+## Driving the route
+
+After a successful search, set speed, lookahead and maximum steps, then run the
+path. An encoder must be configured. The follower uses delivered measurements,
+not the robot's true position. It requests zero wheel speed if encoder data gets
+too old. Sensors, actuators, optional wheel PID and timed faults all use the same
+simulation loop. Collision stopping is enabled for the navigation run.
+
+The run ends when the estimated goal is within 5 cm, on collision, or at the step
+budget. Reaching the estimated goal doesn't guarantee physical arrival or a
+settled stop, especially with wheel slip. History keeps the navigation outcome;
+metrics include both estimated and true goal error. The replay shows the saved
+encoder estimate separately from truth. Download `navigation.json` for the
+tracking samples or use **Use setup** to repeat the exact route and settings.
 
 The result reports status, path length, waypoint count, node expansions and
 collision checks. Failed searches remain visible and exportable. Budget exhaustion

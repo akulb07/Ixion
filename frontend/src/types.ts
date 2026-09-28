@@ -141,3 +141,79 @@ export type PlanningDocument = {
     seed: number | null;
   };
 };
+export type Comparison = {
+  format_version: number;
+  software_version: string;
+  created_utc: string;
+  baseline_id: string;
+  same_setup: boolean;
+  same_software: boolean;
+  runs: (Job & {
+    config: Config;
+    software_version: string;
+    config_sha256: string;
+  })[];
+  metrics: {
+    name: string;
+    values: (number | null)[];
+    deltas: (number | null)[];
+  }[];
+  config_differences: {
+    path: string;
+    values: { present: boolean; value: unknown }[];
+  }[];
+};
+export type BatchTrial = {
+  index: number;
+  group: string;
+  parameters: Record<string, unknown>;
+  seed: number;
+  status: string;
+  error: string | null;
+  run_id: string | null;
+  config_sha256: string;
+  metrics: Record<string, number>;
+};
+export type BatchPreview = {
+  expected_trials: number;
+  resources: {
+    steps: number;
+    duration_s: number;
+    sensor_readings: number;
+    lidar_rays: number;
+  };
+  trials: BatchTrial[];
+};
+export type BatchSummary = {
+  id: string;
+  name: string;
+  status: string;
+  created_utc: string;
+  expected_trials: number;
+};
+export type Batch = BatchSummary &
+  BatchPreview & {
+    finished_trials: number;
+    error: string | null;
+    cancel_requested: boolean;
+    groups: Record<
+      string,
+      {
+        trials: number;
+        failed_trials: number;
+        failure_rate: number;
+        failure_rate_wilson95: [number, number];
+        metrics: Record<
+          string,
+          {
+            measured_trials: number;
+            mean: number;
+            sample_stddev: number | null;
+            median: number;
+            p05: number;
+            p95: number;
+          }
+        >;
+      }
+    >;
+  };

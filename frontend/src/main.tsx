@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { request, post, ready, active } from "./api";
 import { World } from "./World";
 import { PlannerPanel } from "./PlannerPanel";
+import { ComparisonPanel } from "./ComparisonPanel";
+import { ExperimentPanel } from "./ExperimentPanel";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -23,13 +25,15 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 function ActivityIcon({
   kind,
 }: {
-  kind: "files" | "plan" | "inspect" | "history";
+  kind: "files" | "plan" | "inspect" | "history" | "compare" | "sweeps";
 }) {
   const paths = {
     files: "M8 3h11v15H8z M5 7H3v14h11v-2",
     plan: "M5 6h4l6 12h4 M5 18h4l6-12h4 M3 4h2v4H3z M19 16h2v4h-2z",
     inspect: "M4 4h16v16H4z M4 10h16 M12 10v10",
     history: "M4 8a8 8 0 1 1-1 8 M4 3v5H0 M12 7v5l4 2",
+    compare: "M3 4h7v16H3z M14 4h7v16h-7z M6 8h1 M17 8h1 M6 12h1 M17 12h1",
+    sweeps: "M4 4v16h16 M8 15V9 M13 15V5 M18 15v-4",
   };
   return (
     <svg
@@ -125,6 +129,10 @@ function Chart({
 }
 
 function App() {
+  const [workspaceView, setWorkspaceView] = useState<
+    "simulation" | "comparison" | "sweeps"
+  >("simulation");
+  const comparisonOpen = workspaceView === "comparison";
   const [setupMode, setSetupMode] = useState<"simulation" | "planning">(
     "simulation",
   );
@@ -158,6 +166,7 @@ function App() {
     setJsonDirty(false);
   };
   const select = (id: string | null) => {
+    setWorkspaceView("simulation");
     if (id === selected) return;
     setSelected(id);
     setJob(null);
@@ -417,8 +426,11 @@ function App() {
         <button
           title="Simulation setup"
           aria-label="Simulation setup"
-          aria-pressed={setupMode === "simulation"}
+          aria-pressed={
+            workspaceView === "simulation" && setupMode === "simulation"
+          }
           onClick={() => {
+            setWorkspaceView("simulation");
             setSetupMode("simulation");
             document.getElementById("experiment-setup")?.focus();
           }}
@@ -428,8 +440,11 @@ function App() {
         <button
           title="Path planning"
           aria-label="Open path planning"
-          aria-pressed={setupMode === "planning"}
+          aria-pressed={
+            workspaceView === "simulation" && setupMode === "planning"
+          }
           onClick={() => {
+            setWorkspaceView("simulation");
             setSetupMode("planning");
             document.getElementById("experiment-setup")?.focus();
           }}
@@ -437,16 +452,48 @@ function App() {
           <ActivityIcon kind="plan" />
         </button>
         <button
+          title="Compare saved runs"
+          aria-label="Open run comparison"
+          aria-pressed={comparisonOpen}
+          onClick={() => {
+            setPlaying(false);
+            setWorkspaceView("comparison");
+          }}
+        >
+          <ActivityIcon kind="compare" />
+        </button>
+        <button
+          title="Parameter and seed sweeps"
+          aria-label="Open parameter sweeps"
+          aria-pressed={workspaceView === "sweeps"}
+          onClick={() => {
+            setPlaying(false);
+            setWorkspaceView("sweeps");
+          }}
+        >
+          <ActivityIcon kind="sweeps" />
+        </button>
+        <button
           title="State inspector"
           aria-label="Focus state inspector"
-          onClick={() => document.getElementById("state-inspector")?.focus()}
+          onClick={() => {
+            setWorkspaceView("simulation");
+            requestAnimationFrame(() =>
+              document.getElementById("state-inspector")?.focus(),
+            );
+          }}
         >
           <ActivityIcon kind="inspect" />
         </button>
         <button
           title="Run history"
           aria-label="Focus run history"
-          onClick={() => document.getElementById("run-history")?.focus()}
+          onClick={() => {
+            setWorkspaceView("simulation");
+            requestAnimationFrame(() =>
+              document.getElementById("run-history")?.focus(),
+            );
+          }}
         >
           <ActivityIcon kind="history" />
         </button>
@@ -455,7 +502,15 @@ function App() {
         <div className="breadcrumb">
           <span>workspace</span>
           <span aria-hidden="true">›</span>
-          <h1>{setupMode === "planning" ? "Path planning" : "Simulation"}</h1>
+          <h1>
+            {workspaceView === "sweeps"
+              ? "Parameter sweeps"
+              : comparisonOpen
+                ? "Run comparison"
+                : setupMode === "planning"
+                  ? "Path planning"
+                  : "Simulation"}
+          </h1>
           {jsonDirty && <span className="unsaved">Unapplied edits</span>}
         </div>
         <div className="heading-actions">
@@ -466,16 +521,22 @@ function App() {
             className="primary"
             disabled={busy || !draft}
             onClick={
-              setupMode === "planning" ? () => setSetupMode("simulation") : run
+              workspaceView !== "simulation"
+                ? () => setWorkspaceView("simulation")
+                : setupMode === "planning"
+                  ? () => setSetupMode("simulation")
+                  : run
             }
           >
             {busy
               ? "Working…"
-              : setupMode === "planning"
-                ? "Simulation setup →"
-                : draft?.navigation
-                  ? "▶ Run navigation"
-                  : "▶ Run experiment"}
+              : workspaceView !== "simulation"
+                ? "Back to workspace"
+                : setupMode === "planning"
+                  ? "Simulation setup →"
+                  : draft?.navigation
+                    ? "▶ Run navigation"
+                    : "▶ Run experiment"}
           </button>
           <input
             ref={importInput}
@@ -502,7 +563,7 @@ function App() {
           </button>
         </div>
       )}
-      <main className="workspace">
+      <main className="workspace" hidden={workspaceView !== "simulation"}>
         <aside
           className="panel setup"
           id="experiment-setup"
@@ -1205,6 +1266,13 @@ function App() {
           </div>
         </aside>
       </main>
+      <ComparisonPanel visible={comparisonOpen} onReplay={select} />
+      <ExperimentPanel
+        visible={workspaceView === "sweeps"}
+        config={draft}
+        disabled={jsonDirty || busy}
+        onReplay={select}
+      />
       <footer>
         <span>
           <span className="dot" /> {version ? "Local" : "Connecting…"}

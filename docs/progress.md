@@ -23,8 +23,15 @@ test counts I had written down at each point.
 - 17 — local browser workspace, replay and history. 258 / 157.
 - 18 — path planning panel, bounded planning endpoint and a VS Code-style UI.
   273 / 157, plus the three frontend numerical checks. A* in the browser found
-  a 7.686 m path with 24 waypoints. Planning is still a preview; it doesn't drive
-  the robot along the route.
+  a 7.686 m path with 24 waypoints. This checkpoint only previewed the route.
+- 19 — encoder-guided route execution in the simulator, saved navigation samples
+  and a separate estimated pose in replay. 282 tests / 157 subtests.
+- 20 — compare saved runs with a baseline, configuration differences and JSON
+  exports. Failed runs stay visible and unavailable measurements stay empty.
+- 21 — bounded parameter/seed sweep jobs, previewed trial designs, group
+  statistics, cancellation and saved reports in the browser workspace.
 
-Next up: running navigation scenarios in the workspace, then the research
-workflow UI. Test counts above are from each milestone, not current totals.
+Next up: research plots and paired comparisons across sweep groups, then mapping
+and localization views. Arms and grippers remain a later manipulation phase;
+the mobile-robot experiment workflow comes first. Test counts above are from
+each milestone, not current totals.
