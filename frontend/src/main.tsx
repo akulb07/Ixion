@@ -6,6 +6,7 @@ import { PlannerPanel } from "./PlannerPanel";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { ExperimentPanel } from "./ExperimentPanel";
 import { OdometryPanel } from "./OdometryPanel";
+import { MappingPanel } from "./MappingPanel";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -1007,6 +1008,9 @@ function App() {
           </div>
           {selected && runConfig && ready(job?.status) && (
             <OdometryPanel key={selected} runId={selected} config={runConfig} />
+          )}
+          {selected && runConfig && ready(job?.status) && (
+            <MappingPanel key={selected} runId={selected} config={runConfig} />
           )}
         </section>
         <aside className="right-column">

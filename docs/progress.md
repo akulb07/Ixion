@@ -37,7 +37,10 @@ test counts I had written down at each point.
 - 23 — offline encoder-odometry view, matched-time truth comparison, drift
   metrics and JSON export. Missing initial measurements are rejected explicitly.
 
-Current release plan: **23 of 32 milestones complete**; see [roadmap.md](roadmap.md).
-Next up: occupancy-map and EKF views. Arms and grippers remain a later manipulation phase;
+- 24 — occupancy-map workspace with encoder or explicit truth poses, capture-time
+  matching, skipped-scan counts and portable cell/probability exports.
+
+Current release plan: **24 of 32 milestones complete**; see [roadmap.md](roadmap.md).
+Next up: EKF views. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

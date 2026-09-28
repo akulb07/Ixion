@@ -1197,6 +1197,32 @@ footer {
 .odometry-body {
   padding: 14px;
 }
+.occupancy-canvas {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #27292d;
+}
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin-bottom: 14px;
+}
+.map-controls label {
+  display: grid;
+  gap: 5px;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.map-controls select,
+.map-controls input {
+  width: 100%;
+}
 .odometry-paths {
   width: 100%;
   display: block;

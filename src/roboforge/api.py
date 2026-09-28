@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Query, Request
@@ -15,6 +16,7 @@ from roboforge.batch_service import BatchRequest, BatchService, prepare_batch
 from roboforge.comparison import ComparisonRequest, compare_runs
 from roboforge.config import RunConfig
 from roboforge.experiments import paired_differences
+from roboforge.mapping_analysis import analyze_map
 from roboforge.odometry_analysis import analyze_odometry
 from roboforge.planning_service import PlanningRequest, PlanningService
 from roboforge.service import RunService, ServiceError, resource_estimate
@@ -318,6 +320,23 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         return JSONResponse(
             {"run_id": run_id, **result},
             headers={"Content-Disposition": f'attachment; filename="{run_id}-odometry.json"'},
+        )
+
+    @app.get("/api/runs/{run_id}/map")
+    def occupancy_map(
+        run_id: str,
+        request: Request,
+        sensor: str = Query(min_length=1, max_length=128),
+        pose_source: Literal["encoder", "truth"] = "encoder",
+        encoder: str = Query("encoders", min_length=1, max_length=128),
+        resolution: float = Query(0.1, ge=0.05, le=10, allow_inf_nan=False),
+    ):
+        result = analyze_map(
+            request.app.state.service.replay(run_id), sensor, pose_source, encoder, resolution
+        )
+        return JSONResponse(
+            {"run_id": run_id, **result},
+            headers={"Content-Disposition": f'attachment; filename="{run_id}-map.json"'},
         )
 
     web = Path(__file__).parent / "web"

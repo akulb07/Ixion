@@ -5,9 +5,9 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.23.0.** Saved runs now have an encoder-odometry analysis view with
-estimated/truth paths and drift metrics. See [the release roadmap](docs/roadmap.md)
-for the 23 completed checkpoints and 9 remaining milestones.
+**Version: 0.24.0.** Saved LiDAR runs now support occupancy maps built with encoder
+estimates or labelled ground-truth poses. See [the release roadmap](docs/roadmap.md)
+for the 24 completed checkpoints and 8 remaining milestones.
 
 ## Getting it to run
 
