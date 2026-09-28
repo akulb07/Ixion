@@ -34,6 +34,10 @@ test counts I had written down at each point.
 - 22 — individual measurement plots and seed-paired comparisons in the sweep
   workspace. Reports retain measurements, signed differences and exclusion reasons.
 
-Next up: mapping and localization views. Arms and grippers remain a later manipulation phase;
+- 23 — offline encoder-odometry view, matched-time truth comparison, drift
+  metrics and JSON export. Missing initial measurements are rejected explicitly.
+
+Current release plan: **23 of 32 milestones complete**; see [roadmap.md](roadmap.md).
+Next up: occupancy-map and EKF views. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

@@ -5,8 +5,9 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.22.0.** Sweep results now include individual measurement plots and
-paired comparisons by seed, with downloadable reports and explicit exclusions.
+**Version: 0.23.0.** Saved runs now have an encoder-odometry analysis view with
+estimated/truth paths and drift metrics. See [the release roadmap](docs/roadmap.md)
+for the 23 completed checkpoints and 9 remaining milestones.
 
 ## Getting it to run
 

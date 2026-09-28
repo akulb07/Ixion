@@ -1194,6 +1194,28 @@ footer {
   font-size: 11px;
   line-height: 1.6;
 }
+.odometry-body {
+  padding: 14px;
+}
+.odometry-paths {
+  width: 100%;
+  display: block;
+  background: #27292d;
+  margin: 12px 0;
+}
+.odometry-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.odometry-metrics dt {
+  font-size: 11px;
+  color: #bbb7b0;
+}
+.odometry-metrics dd {
+  margin: 5px 0 0;
+  font-family: monospace;
+}
 .sweep-plot {
   margin: 24px 0;
   padding: 14px;

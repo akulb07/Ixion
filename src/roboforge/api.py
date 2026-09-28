@@ -15,6 +15,7 @@ from roboforge.batch_service import BatchRequest, BatchService, prepare_batch
 from roboforge.comparison import ComparisonRequest, compare_runs
 from roboforge.config import RunConfig
 from roboforge.experiments import paired_differences
+from roboforge.odometry_analysis import analyze_odometry
 from roboforge.planning_service import PlanningRequest, PlanningService
 from roboforge.service import RunService, ServiceError, resource_estimate
 
@@ -305,6 +306,19 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     @app.get("/api/runs/{run_id}/artifacts/{filename}")
     def artifact(run_id: str, filename: str, request: Request):
         return FileResponse(request.app.state.service.artifact(run_id, filename), filename=filename)
+
+    @app.get("/api/runs/{run_id}/odometry")
+    def odometry(
+        run_id: str,
+        request: Request,
+        sensor: str = Query(min_length=1, max_length=128),
+        max_points: int = Query(1000, ge=2, le=2000),
+    ):
+        result = analyze_odometry(request.app.state.service.replay(run_id), sensor, max_points)
+        return JSONResponse(
+            {"run_id": run_id, **result},
+            headers={"Content-Disposition": f'attachment; filename="{run_id}-odometry.json"'},
+        )
 
     web = Path(__file__).parent / "web"
     if web.is_dir():

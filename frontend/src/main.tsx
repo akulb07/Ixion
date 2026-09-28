@@ -5,6 +5,7 @@ import { World } from "./World";
 import { PlannerPanel } from "./PlannerPanel";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { ExperimentPanel } from "./ExperimentPanel";
+import { OdometryPanel } from "./OdometryPanel";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -1004,6 +1005,9 @@ function App() {
                 : "Telemetry appears after a completed run."}
             </div>
           </div>
+          {selected && runConfig && ready(job?.status) && (
+            <OdometryPanel key={selected} runId={selected} config={runConfig} />
+          )}
         </section>
         <aside className="right-column">
           <div
