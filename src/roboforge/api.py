@@ -15,6 +15,7 @@ from roboforge import __version__
 from roboforge.batch_service import BatchRequest, BatchService, prepare_batch
 from roboforge.comparison import ComparisonRequest, compare_runs
 from roboforge.config import RunConfig
+from roboforge.ekf_analysis import analyze_ekf
 from roboforge.experiments import paired_differences
 from roboforge.mapping_analysis import analyze_map
 from roboforge.odometry_analysis import analyze_odometry
@@ -337,6 +338,29 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         return JSONResponse(
             {"run_id": run_id, **result},
             headers={"Content-Disposition": f'attachment; filename="{run_id}-map.json"'},
+        )
+
+    @app.get("/api/runs/{run_id}/ekf")
+    def ekf_analysis(
+        run_id: str,
+        request: Request,
+        encoder: str = Query("encoders", min_length=1, max_length=128),
+        imu: str = Query("imu", min_length=1, max_length=128),
+        wheel_variance: float = Query(0.001, ge=0, le=1, allow_inf_nan=False),
+        gyro_stddev: float = Query(0.01, ge=0.000001, le=10, allow_inf_nan=False),
+        max_points: int = Query(1000, ge=2, le=2000),
+    ):
+        result = analyze_ekf(
+            request.app.state.service.replay(run_id),
+            encoder,
+            imu,
+            wheel_variance,
+            gyro_stddev,
+            max_points,
+        )
+        return JSONResponse(
+            {"run_id": run_id, **result},
+            headers={"Content-Disposition": f'attachment; filename="{run_id}-ekf.json"'},
         )
 
     web = Path(__file__).parent / "web"

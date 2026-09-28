@@ -10,6 +10,22 @@ from roboforge.sensors.readings import EncoderReading
 from roboforge.service import ServiceError
 
 
+def pose_error_metrics(samples):
+    """Sample-weighted position errors and signed final heading error."""
+    errors = [sample["position_error_m"] for sample in samples]
+    scale = max(errors) or 1
+    metrics = {
+        "position_rmse_m": scale * math.sqrt(sum((e / scale) ** 2 for e in errors) / len(errors)),
+        "position_mae_m": math.fsum(e / len(errors) for e in errors),
+        "max_position_error_m": max(errors),
+        "final_position_error_m": errors[-1],
+        "final_heading_error_rad": samples[-1]["heading_error_rad"],
+    }
+    if not all(math.isfinite(v) for v in metrics.values()):
+        raise ServiceError("analysis exceeds finite metric arithmetic", 422)
+    return metrics
+
+
 def analyze_odometry(replay, sensor: str, max_points: int = 1000):
     readings = sorted(
         (
@@ -53,17 +69,7 @@ def analyze_odometry(replay, sensor: str, max_points: int = 1000):
             )
     except ValueError as exc:
         raise ServiceError(f"invalid encoder stream: {exc}", 422) from exc
-    errors = [sample["position_error_m"] for sample in samples]
-    scale = max(errors) or 1
-    metrics = {
-        "position_rmse_m": scale * math.sqrt(sum((e / scale) ** 2 for e in errors) / len(errors)),
-        "position_mae_m": math.fsum(e / len(errors) for e in errors),
-        "max_position_error_m": max(errors),
-        "final_position_error_m": errors[-1],
-        "final_heading_error_rad": samples[-1]["heading_error_rad"],
-    }
-    if not all(math.isfinite(v) for v in metrics.values()):
-        raise ServiceError("analysis exceeds finite metric arithmetic", 422)
+    metrics = pose_error_metrics(samples)
     count = min(max_points, len(samples))
     indices = (
         [round(i * (len(samples) - 1) / (count - 1)) for i in range(count)] if count > 1 else [0]

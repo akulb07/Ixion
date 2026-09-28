@@ -7,6 +7,7 @@ import { ComparisonPanel } from "./ComparisonPanel";
 import { ExperimentPanel } from "./ExperimentPanel";
 import { OdometryPanel } from "./OdometryPanel";
 import { MappingPanel } from "./MappingPanel";
+import { EkfPanel } from "./EkfPanel";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -1011,6 +1012,9 @@ function App() {
           )}
           {selected && runConfig && ready(job?.status) && (
             <MappingPanel key={selected} runId={selected} config={runConfig} />
+          )}
+          {selected && runConfig && ready(job?.status) && (
+            <EkfPanel key={selected} runId={selected} config={runConfig} />
           )}
         </section>
         <aside className="right-column">

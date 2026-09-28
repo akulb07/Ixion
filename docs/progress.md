@@ -40,7 +40,10 @@ test counts I had written down at each point.
 - 24 — occupancy-map workspace with encoder or explicit truth poses, capture-time
   matching, skipped-scan counts and portable cell/probability exports.
 
-Current release plan: **24 of 32 milestones complete**; see [roadmap.md](roadmap.md).
-Next up: EKF views. Arms and grippers remain a later manipulation phase;
+- 25 — offline encoder/gyro EKF workspace, paired odometry errors, adjustable
+  noise assumptions, gyro acceptance counts and model-based position uncertainty.
+
+Current release plan: **25 of 32 milestones complete**; see [roadmap.md](roadmap.md).
+Next up: scan matching and SLAM inspection. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

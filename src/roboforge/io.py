@@ -17,9 +17,10 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
     """Save validated configuration, numerical trajectory, and runtime versions."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "config.json").write_text(
-        result.config.model_dump_json(indent=2), encoding="utf-8"
-    )
+    # The service exposes config.json while export is running. Never truncate it in place.
+    pending_config = directory / "config.pending.json"
+    pending_config.write_text(result.config.model_dump_json(indent=2), encoding="utf-8")
+    pending_config.replace(directory / "config.json")
     metadata = {
         "format_version": 2,
         "roboforge_version": __version__,
