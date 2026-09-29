@@ -1,5 +1,23 @@
 # Timed fault injection
 
+The workspace's Fault injection section edits all eight fault types without
+hand-editing JSON. Add a fault, choose its effect and compatible target, then set
+the start, optional end and magnitude. Command delay uses whole simulation steps
+instead of magnitude. Validate faults checks the whole setup with the same schema
+used when starting a run. Names must be unique, lowercase identifiers.
+
+The Encoder dropout laboratory combines wheel PID feedback with a 75% encoder
+packet-drop probability from 1 to 2 seconds. Use it to inspect missing measurements
+and held controller output. Faults model degraded behavior; they do not necessarily
+make a run's status become failed or cause a collision.
+
+To reproduce an experiment, choose it in history, use its saved setup and retain
+the seed and fault names. To make a baseline, save the faulty run first, choose
+Clear faults for baseline, and run again. This changes the draft only. Compare
+both saved runs or inspect their localization/controller analyses. Export the
+setup to keep the schedule and seed together. Reproduction assumes the same
+software version and numerical environment.
+
 RunConfig.faults contains uniquely named, typed effects with target and half-open
 interval [start,end). Missing end keeps a fault active. Configuration validates
 sensor compatibility, wheel targets, magnitude ranges and delay budgets. Sensor

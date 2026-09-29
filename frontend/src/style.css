@@ -20,7 +20,8 @@
 [hidden] {
   display: none !important;
 }
-.controller-setup {
+.controller-setup,
+.fault-editor {
   margin-bottom: 14px;
 }
 .controller-fields {

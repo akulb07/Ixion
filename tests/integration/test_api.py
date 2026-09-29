@@ -14,7 +14,7 @@ def test_api_end_to_end_replay_and_artifacts(tmp_path):
         assert client.get("/api/health").json()["status"] == "ok"
         assert client.get("/api/config/schema").json()["title"] == "RunConfig"
         presets = client.get("/api/presets").json()
-        assert len(presets) == 3
+        assert len(presets) == 4
         for preset in presets:
             assert client.post("/api/config/validate", json=preset["config"]).status_code == 200
         response = client.post("/api/runs", json=config().model_dump(mode="json"))

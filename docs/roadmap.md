@@ -1,7 +1,7 @@
 # Where this is going
 
 The working plan is 32 implementation milestones for the first mobile-robot
-release. 27 are finished. This is a planning count, not a percentage of all the
+release. 28 are finished. This is a planning count, not a percentage of all the
 features in the original specification. The milestones are different sizes.
 
 The original expanded specification has 19 broader phases. The progress log
@@ -11,11 +11,10 @@ requested feature in those phases is finished. Phase 17 (advanced visualization)
 is in progress. Phases 18 and 19 (AI assistant and hardware/digital-twin bridge)
 are later work.
 
-Completed checkpoints 1–27 are in [progress.md](progress.md).
+Completed checkpoints 1–28 are in [progress.md](progress.md).
 
 Remaining work for the first mobile-robot release:
 
-- 28 — fault editor and reproducible failure experiments.
 - 29 — benchmark suite and experiment report exports.
 - 30 — robot/environment setup editing and complete workspace workflows.
 - 31 — installation, packaging and compatibility checks.

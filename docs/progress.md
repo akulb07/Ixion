@@ -51,7 +51,11 @@ test counts I had written down at each point.
   and contribution plots, full-data tracking metrics and saved analysis export.
   Browser bundles now use content versions to avoid stale UI after updates.
 
-Current release plan: **27 of 32 milestones complete**; see [roadmap.md](roadmap.md).
-Next up: fault editing and reproducible failure experiments. Arms and grippers remain a later manipulation phase;
+- 28 — editor for all eight fault types, compatible targets, schedule validation,
+  dropout laboratory and a separate fault-free baseline workflow. Repeated seeded
+  runs produce identical sensor, controller, trajectory and fault-event exports.
+
+Current release plan: **28 of 32 milestones complete**; see [roadmap.md](roadmap.md).
+Next up: benchmark suite and experiment report exports. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

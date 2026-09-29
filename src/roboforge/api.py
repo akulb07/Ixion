@@ -110,6 +110,22 @@ def presets():
             },
         }
     )
+    dropout = RunConfig.model_validate(
+        {
+            **feedback.model_dump(mode="json"),
+            "name": "dropout_lab",
+            "faults": [
+                {
+                    "name": "encoder_dropout",
+                    "kind": "sensor_dropout",
+                    "target": "encoders",
+                    "start": 1,
+                    "end": 2,
+                    "magnitude": 0.75,
+                }
+            ],
+        }
+    )
     return [
         {"id": "sensors", "title": "Sensor laboratory", "config": normal.model_dump(mode="json")},
         {"id": "slip", "title": "Wheel slip laboratory", "config": faulted.model_dump(mode="json")},
@@ -117,6 +133,11 @@ def presets():
             "id": "pid",
             "title": "PID feedback laboratory",
             "config": feedback.model_dump(mode="json"),
+        },
+        {
+            "id": "dropout",
+            "title": "Encoder dropout laboratory",
+            "config": dropout.model_dump(mode="json"),
         },
     ]
 

@@ -11,6 +11,7 @@ import { EkfPanel } from "./EkfPanel";
 import { SlamPanel } from "./SlamPanel";
 import { ControllerSetup } from "./ControllerSetup";
 import { ControlPanel } from "./ControlPanel";
+import { FaultEditor } from "./FaultEditor";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -802,6 +803,12 @@ function App() {
                   disabled={busy || jsonDirty}
                   edit={edit}
                 />
+                <FaultEditor
+                  config={draft}
+                  disabled={busy || jsonDirty}
+                  edit={edit}
+                  onValidate={validateDraft}
+                />
                 <details>
                   <summary>
                     Advanced configuration <span>JSON</span>
@@ -1190,8 +1197,10 @@ function App() {
                           {fault.kind.replaceAll("_", " ")} · {fault.target}
                         </p>
                         <small>
-                          {fault.start}–{fault.end ?? "end"} s · magnitude{" "}
-                          {fault.magnitude}
+                          {fault.start}–{fault.end ?? "end"} s ·{" "}
+                          {fault.kind === "actuator_delay"
+                            ? `${fault.delay_steps} delay steps`
+                            : `magnitude ${fault.magnitude}`}
                         </small>
                       </div>
                     ))

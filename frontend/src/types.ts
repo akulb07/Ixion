@@ -40,6 +40,7 @@ export type Fault = {
   start: number;
   end: number | null;
   magnitude: number;
+  delay_steps: number;
 };
 export type Config = {
   name: string;

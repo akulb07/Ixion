@@ -5,9 +5,9 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.27.0.** The workspace now has editable wheel PID gains, a feedback
-laboratory and recorded controller response plots. See [the release roadmap](docs/roadmap.md)
-for the 27 completed checkpoints and 5 remaining milestones.
+**Version: 0.28.0.** Fault schedules can now be edited in the workspace. There is
+an encoder-dropout lab and a quick way to prepare a fault-free baseline. See [the release roadmap](docs/roadmap.md)
+for the 28 completed checkpoints and 4 remaining milestones.
 
 ## Getting it to run
 
