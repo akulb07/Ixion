@@ -5,17 +5,17 @@
   font-variant-numeric: tabular-nums;
   color-scheme: dark;
   color: #dce0e8;
-  background: #15171b;
+  background: #0c0e11;
   --muted: #969dab;
-  --line: #343842;
+  --line: #292e38;
   --accent: #b496ff;
-  --accent-soft: #302842;
+  --accent-soft: #241d34;
   --teal: var(--accent);
 }
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #464c59 transparent;
+  scrollbar-color: #363d49 transparent;
 }
 [hidden] {
   display: none !important;
@@ -178,7 +178,7 @@
   min-width: 140px;
 }
 .comparison-table thead th {
-  background: #242730;
+  background: #1b1e25;
 }
 .comparison-table th[scope="row"] {
   font-weight: 400;
@@ -188,7 +188,7 @@
   font-family: Consolas, monospace;
 }
 .comparison-table td:nth-child(2) {
-  background: #20232a;
+  background: #171a20;
 }
 .comparison-table button {
   margin-top: 10px;
@@ -251,15 +251,15 @@ textarea {
   outline: 1px solid var(--accent);
 }
 button {
-  border: 1px solid #424957;
+  border: 1px solid #353d4b;
   color: #dce0e8;
-  background: #20232a;
+  background: #171a20;
   border-radius: 0;
   padding: 6px 10px;
   cursor: pointer;
 }
 button:hover:not(:disabled) {
-  background: #303541;
+  background: #242933;
 }
 button:disabled {
   opacity: 0.45;
@@ -275,9 +275,9 @@ a:hover {
 input,
 select,
 textarea {
-  background: #1c1f26;
+  background: #101318;
   color: #eeeeee;
-  border: 1px solid #414856;
+  border: 1px solid #343c49;
   border-radius: 0;
   padding: 5px 7px;
   width: 100%;
@@ -339,12 +339,12 @@ textarea {
 .topbar {
   height: 34px;
   flex-shrink: 0;
-  border-bottom: 1px solid #343842;
+  border-bottom: 1px solid #292e38;
   display: flex;
   align-items: center;
   gap: 20px;
   padding: 0 12px;
-  background: #22252c;
+  background: #191c22;
   margin-left: -48px;
 }
 .brand {
@@ -378,7 +378,7 @@ textarea {
   bottom: 24px;
   left: 0;
   width: 48px;
-  background: #20232a;
+  background: #171a20;
   display: flex;
   flex-direction: column;
   z-index: 2;
@@ -415,7 +415,7 @@ textarea {
   gap: 12px;
   padding: 4px 12px;
   border-bottom: 1px solid var(--line);
-  background: #1b1e24;
+  background: #111419;
 }
 .breadcrumb {
   display: flex;
@@ -454,7 +454,7 @@ textarea {
   min-height: 0;
 }
 .panel {
-  background: #1b1e24;
+  background: #111419;
   min-width: 0;
 }
 .panel-title {
@@ -544,7 +544,7 @@ textarea {
 }
 .command {
   padding: 10px;
-  background: #15171b;
+  background: #0c0e11;
   border: 1px solid var(--line);
   margin-bottom: 8px;
 }
@@ -595,7 +595,7 @@ textarea {
   height: 280px;
   resize: vertical;
   margin-bottom: 8px;
-  background: #15171b;
+  background: #0c0e11;
   tab-size: 2;
 }
 .subtle {
@@ -615,7 +615,7 @@ textarea {
 }
 .right-column {
   border-left: 1px solid var(--line);
-  background: #1b1e24;
+  background: #111419;
 }
 .title-inline {
   display: flex;
@@ -624,17 +624,17 @@ textarea {
   min-width: 0;
 }
 .viewport {
-  background: #15171b;
+  background: #0c0e11;
 }
 .editor-title {
   padding: 0 12px 0 0;
-  background: #20232a;
+  background: #171a20;
 }
 .editor-title h2 {
   padding: 10px 14px;
-  background: #15171b;
+  background: #0c0e11;
   border-top: 1px solid var(--accent);
-  border-right: 1px solid #1b1e24;
+  border-right: 1px solid #111419;
   text-transform: none;
   letter-spacing: 0;
   font-size: 12px;
@@ -669,7 +669,7 @@ textarea {
 }
 .world-container {
   position: relative;
-  background: #15171b;
+  background: #0c0e11;
   height: clamp(280px, 43vh, 560px);
   padding: 8px 18px 30px;
 }
@@ -700,7 +700,7 @@ textarea {
 .replay {
   padding: 10px 12px;
   border-top: 1px solid var(--line);
-  background: #1b1e24;
+  background: #111419;
 }
 .replay-buttons {
   display: flex;
@@ -776,7 +776,7 @@ textarea {
   font-size: 11px;
 }
 .telemetry {
-  background: #15171b;
+  background: #0c0e11;
 }
 .telemetry .panel-title {
   border-bottom: 0;
@@ -847,7 +847,7 @@ textarea {
 .tabs {
   display: flex;
   border-bottom: 1px solid var(--line);
-  background: #20232a;
+  background: #171a20;
 }
 .tabs button {
   flex: 1;
@@ -862,11 +862,11 @@ textarea {
 .tabs button[aria-selected="true"] {
   color: #ffffff;
   border-top-color: var(--accent);
-  background: #1b1e24;
+  background: #111419;
 }
 .tabs button span {
   margin-left: 5px;
-  background: #303541;
+  background: #242933;
   padding: 1px 5px;
   border-radius: 2px;
   font-size: 10px;
@@ -909,7 +909,7 @@ textarea {
 }
 .count {
   color: #dce0e8;
-  background: #303541;
+  background: #242933;
   border-radius: 2px;
   padding: 1px 6px;
   font-size: 10px;
@@ -1006,11 +1006,11 @@ textarea {
   font-size: 18px;
 }
 .error {
-  background: #352a2a;
+  background: #291c20;
   color: #f48771;
 }
 .notice {
-  background: #25313b;
+  background: #17232d;
   color: #dce0e8;
 }
 footer {
@@ -1021,8 +1021,8 @@ footer {
   justify-content: space-between;
   font-size: 11px;
   color: #ffffff;
-  background: #20232a;
-  border-top: 1px solid #41404e;
+  background: #171a20;
+  border-top: 1px solid #302e3b;
   padding: 0 12px;
   margin-left: -48px;
   gap: 16px;
@@ -1051,7 +1051,7 @@ footer {
   margin-top: 12px;
   border-left: 2px solid var(--accent);
   padding: 10px;
-  background: #15171b;
+  background: #0c0e11;
 }
 .plan-result strong {
   font-size: 12px;
@@ -1215,7 +1215,7 @@ footer {
 .navigation-inspector {
   padding: 12px;
   border-top: 1px solid var(--line);
-  background: #1b1e24;
+  background: #111419;
   font-size: 11px;
   line-height: 1.6;
 }
@@ -1228,7 +1228,7 @@ footer {
   max-height: 420px;
   object-fit: contain;
   image-rendering: pixelated;
-  background: #15171b;
+  background: #0c0e11;
 }
 .map-controls {
   display: flex;
@@ -1251,7 +1251,7 @@ footer {
 .odometry-paths {
   width: 100%;
   display: block;
-  background: #15171b;
+  background: #0c0e11;
   margin: 12px 0;
 }
 .odometry-metrics {
@@ -1285,14 +1285,14 @@ footer {
   stroke: #929baa;
 }
 .plot-guide {
-  stroke: #343842;
+  stroke: #292e38;
 }
 .plot-completed {
   fill: #d2ad88;
   stroke: #d2ad88;
 }
 .plot-incomplete {
-  fill: #1b1e24;
+  fill: #111419;
   stroke: #e1b95b;
   stroke-width: 2px;
 }
