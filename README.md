@@ -5,9 +5,9 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.26.0.** Saved runs now have scan-to-map SLAM inspection, per-scan
-rejection reasons and odometry error comparisons. See [the release roadmap](docs/roadmap.md)
-for the 26 completed checkpoints and 6 remaining milestones.
+**Version: 0.27.0.** The workspace now has editable wheel PID gains, a feedback
+laboratory and recorded controller response plots. See [the release roadmap](docs/roadmap.md)
+for the 27 completed checkpoints and 5 remaining milestones.
 
 ## Getting it to run
 

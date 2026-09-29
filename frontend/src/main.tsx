@@ -9,6 +9,8 @@ import { OdometryPanel } from "./OdometryPanel";
 import { MappingPanel } from "./MappingPanel";
 import { EkfPanel } from "./EkfPanel";
 import { SlamPanel } from "./SlamPanel";
+import { ControllerSetup } from "./ControllerSetup";
+import { ControlPanel } from "./ControlPanel";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -795,6 +797,11 @@ function App() {
                     onNavigate={runNavigation}
                   />
                 </div>
+                <ControllerSetup
+                  config={draft}
+                  disabled={busy || jsonDirty}
+                  edit={edit}
+                />
                 <details>
                   <summary>
                     Advanced configuration <span>JSON</span>
@@ -1019,6 +1026,9 @@ function App() {
           )}
           {selected && runConfig && ready(job?.status) && (
             <SlamPanel key={selected} runId={selected} config={runConfig} />
+          )}
+          {selected && runConfig && ready(job?.status) && (
+            <ControlPanel key={selected} runId={selected} config={runConfig} />
           )}
         </section>
         <aside className="right-column">

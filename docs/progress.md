@@ -47,7 +47,11 @@ test counts I had written down at each point.
   residuals and rejection reasons, paired error metrics and JSON export. Also
   fixed Windows export failures caused by replacing an already published setup.
 
-Current release plan: **26 of 32 milestones complete**; see [roadmap.md](roadmap.md).
-Next up: controller tuning and response metrics. Arms and grippers remain a later manipulation phase;
+- 27 — editable wheel PID settings, feedback laboratory, per-wheel response
+  and contribution plots, full-data tracking metrics and saved analysis export.
+  Browser bundles now use content versions to avoid stale UI after updates.
+
+Current release plan: **27 of 32 milestones complete**; see [roadmap.md](roadmap.md).
+Next up: fault editing and reproducible failure experiments. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

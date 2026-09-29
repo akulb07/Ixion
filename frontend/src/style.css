@@ -20,6 +20,23 @@
 [hidden] {
   display: none !important;
 }
+.controller-setup {
+  margin-bottom: 14px;
+}
+.controller-fields {
+  border: 0;
+  padding: 10px 0 0;
+  margin: 0;
+  min-width: 0;
+}
+.controller-fields > label {
+  display: block;
+  margin-bottom: 12px;
+}
+.controller-fields input[type="checkbox"] {
+  width: 13px;
+  margin-right: 6px;
+}
 .sweep-form {
   border: 0;
   padding: 0;

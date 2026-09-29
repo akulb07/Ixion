@@ -1,4 +1,13 @@
 export type Pose = { x: number; y: number; theta: number };
+export type PIDConfig = {
+  kp: number;
+  ki: number;
+  kd: number;
+  output_min: number;
+  output_max: number;
+  derivative_time_constant: number;
+  integral_limit: number;
+};
 export type Navigation = {
   path: { x: number; y: number }[];
   encoder: string;
@@ -61,6 +70,12 @@ export type Config = {
   simulation: { dt: number; integrator: string; collision: { mode: string } };
   commands: { left: number; right: number; steps: number }[];
   navigation?: Navigation | null;
+  wheel_controller?: {
+    encoder: string;
+    feedforward: number;
+    left: PIDConfig;
+    right: PIDConfig;
+  } | null;
   sensors: Sensor[];
   faults: Fault[];
 };

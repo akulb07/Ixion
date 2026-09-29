@@ -14,7 +14,7 @@ def test_api_end_to_end_replay_and_artifacts(tmp_path):
         assert client.get("/api/health").json()["status"] == "ok"
         assert client.get("/api/config/schema").json()["title"] == "RunConfig"
         presets = client.get("/api/presets").json()
-        assert len(presets) == 2
+        assert len(presets) == 3
         for preset in presets:
             assert client.post("/api/config/validate", json=preset["config"]).status_code == 200
         response = client.post("/api/runs", json=config().model_dump(mode="json"))
@@ -80,7 +80,7 @@ def test_workspace_assets_are_local_and_packaged(tmp_path):
         home = client.get("/")
         assert home.status_code == 200
         assert "RoboForge" in home.text
-        assert 'src="/assets/app.js"' in home.text
+        assert 'src="/assets/app.js?v=' in home.text
         for asset in ("app.js", "app.css"):
             response = client.get("/assets/" + asset)
             assert response.status_code == 200 and len(response.content) > 1000

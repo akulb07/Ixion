@@ -15,6 +15,7 @@ from roboforge import __version__
 from roboforge.batch_service import BatchRequest, BatchService, prepare_batch
 from roboforge.comparison import ComparisonRequest, compare_runs
 from roboforge.config import RunConfig
+from roboforge.control_analysis import analyze_control
 from roboforge.ekf_analysis import analyze_ekf
 from roboforge.experiments import paired_differences
 from roboforge.mapping_analysis import analyze_map
@@ -94,9 +95,29 @@ def presets():
             ],
         }
     )
+    feedback = RunConfig.model_validate(
+        {
+            **base,
+            "name": "pid_lab",
+            "commands": [
+                {"left": 5, "right": 5, "steps": 150},
+                {"left": 2, "right": 2, "steps": 150},
+            ],
+            "wheel_controller": {"left": {"kp": 0.8, "ki": 1}, "right": {"kp": 0.8, "ki": 1}},
+            "actuators": {
+                "left": {"time_constant": 0.15, "max_speed": 10},
+                "right": {"time_constant": 0.15, "max_speed": 10},
+            },
+        }
+    )
     return [
         {"id": "sensors", "title": "Sensor laboratory", "config": normal.model_dump(mode="json")},
         {"id": "slip", "title": "Wheel slip laboratory", "config": faulted.model_dump(mode="json")},
+        {
+            "id": "pid",
+            "title": "PID feedback laboratory",
+            "config": feedback.model_dump(mode="json"),
+        },
     ]
 
 
@@ -379,6 +400,18 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         return JSONResponse(
             {"run_id": run_id, **result},
             headers={"Content-Disposition": f'attachment; filename="{run_id}-slam.json"'},
+        )
+
+    @app.get("/api/runs/{run_id}/control")
+    def control_analysis(
+        run_id: str, request: Request, max_points: int = Query(1000, ge=2, le=2000)
+    ):
+        result = analyze_control(request.app.state.service.replay(run_id), max_points)
+        return JSONResponse(
+            {"run_id": run_id, **result},
+            headers={
+                "Content-Disposition": f'attachment; filename="{run_id}-control-analysis.json"'
+            },
         )
 
     web = Path(__file__).parent / "web"

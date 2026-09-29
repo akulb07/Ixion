@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { createHash } from "node:crypto";
 // Some Windows sandboxes deny Go's ancestor-directory scans. In that environment,
 // resolve and read the same project files through Node's filesystem API.
 const nodeFiles = {
@@ -52,6 +53,24 @@ for (const file of result.outputFiles) {
   await mkdir(path.dirname(file.path), { recursive: true });
   await writeFile(file.path, file.contents);
 }
+const indexPath = fileURLToPath(
+  new URL("../src/roboforge/web/index.html", import.meta.url),
+);
+let html = await readFile(indexPath, "utf8");
+for (const extension of ["js", "css"]) {
+  const file = result.outputFiles.find((output) =>
+    output.path.endsWith(`app.${extension}`),
+  );
+  const hash = createHash("sha256")
+    .update(file.contents)
+    .digest("hex")
+    .slice(0, 12);
+  html = html.replace(
+    new RegExp(`/assets/app\\.${extension}(?:\\?v=[^"\\s]+)?`, "g"),
+    `/assets/app.${extension}?v=${hash}`,
+  );
+}
+await writeFile(indexPath, html);
 const resolve = createRequire(import.meta.url);
 const reactRoot = path.dirname(resolve.resolve("react/package.json"));
 const domRoot = path.dirname(resolve.resolve("react-dom/package.json"));

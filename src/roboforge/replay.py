@@ -1,6 +1,7 @@
 """Read-only replay of exported states, motion segments and sensor delivery."""
 
 import bisect
+import copy
 import csv
 import hashlib
 import json
@@ -151,6 +152,11 @@ class ReplayLog:
             if (directory / "navigation.json").exists()
             else []
         )
+
+    @property
+    def control_samples(self):
+        """Isolated saved controller telemetry for offline analysis."""
+        return copy.deepcopy(self._control)
 
     def state_at(self, time: float) -> RobotState:
         """Interpolate truth without scanning sensor or controller histories."""
