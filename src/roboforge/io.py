@@ -17,10 +17,14 @@ def save_result(result: SimulationResult, directory: str | Path) -> Path:
     """Save validated configuration, numerical trajectory, and runtime versions."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    # The service exposes config.json while export is running. Never truncate it in place.
-    pending_config = directory / "config.pending.json"
-    pending_config.write_text(result.config.model_dump_json(indent=2), encoding="utf-8")
-    pending_config.replace(directory / "config.json")
+    # The service already publishes this immutable setup. Windows readers can hold
+    # it open without delete-sharing, so avoid replacing an identical configuration.
+    config_path = directory / "config.json"
+    existing = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else None
+    if existing != result.config.model_dump(mode="json"):
+        pending_config = directory / "config.pending.json"
+        pending_config.write_text(result.config.model_dump_json(indent=2), encoding="utf-8")
+        pending_config.replace(config_path)
     metadata = {
         "format_version": 2,
         "roboforge_version": __version__,

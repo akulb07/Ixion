@@ -149,6 +149,7 @@ class SlamEstimate:
     status: str
     match: MatchResult | None
     map_updated: bool
+    rejection_reasons: tuple[str, ...] = ()
 
 
 class SlamBackend(Protocol):
@@ -206,19 +207,25 @@ class IncrementalSlam:
             prior if self._prior is None else compose(self._pose, relative(self._prior, prior))
         )
         match = None
+        reasons = []
         enough = len(points) >= self.config.icp.minimum_pairs
         if len(self._points) == 0:
             accepted = enough
             pose, status = predicted, "initialized" if enough else "rejected"
+            if not enough:
+                reasons.append("insufficient_hits")
         else:
             match = match_points(points, self._points, predicted, self.config.icp)
             correction = relative(predicted, match.pose)
-            accepted = (
-                match.status == "converged"
-                and match.rmse <= self.config.max_match_rmse
-                and correction.position.norm <= self.config.max_correction_distance
-                and abs(correction.theta) <= self.config.max_correction_angle
-            )
+            if match.status != "converged":
+                reasons.append(match.status)
+            if match.rmse is not None and match.rmse > self.config.max_match_rmse:
+                reasons.append("residual_gate")
+            if correction.position.norm > self.config.max_correction_distance:
+                reasons.append("translation_gate")
+            if abs(correction.theta) > self.config.max_correction_angle:
+                reasons.append("rotation_gate")
+            accepted = not reasons
             pose = match.pose if accepted else predicted
             status = "matched" if accepted else "rejected"
         if accepted:
@@ -228,4 +235,4 @@ class IncrementalSlam:
             )
             self._points = merged
         self._prior, self._pose, self._last_scan = prior, pose, scan
-        return SlamEstimate(scan.capture_time, pose, status, match, accepted)
+        return SlamEstimate(scan.capture_time, pose, status, match, accepted, tuple(reasons))

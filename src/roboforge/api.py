@@ -21,6 +21,7 @@ from roboforge.mapping_analysis import analyze_map
 from roboforge.odometry_analysis import analyze_odometry
 from roboforge.planning_service import PlanningRequest, PlanningService
 from roboforge.service import RunService, ServiceError, resource_estimate
+from roboforge.slam_analysis import analyze_slam
 
 
 class BodyLimitMiddleware:
@@ -361,6 +362,23 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         return JSONResponse(
             {"run_id": run_id, **result},
             headers={"Content-Disposition": f'attachment; filename="{run_id}-ekf.json"'},
+        )
+
+    @app.get("/api/runs/{run_id}/slam")
+    def slam_analysis(
+        run_id: str,
+        request: Request,
+        sensor: str = Query("lidar", min_length=1, max_length=128),
+        encoder: str = Query("encoders", min_length=1, max_length=128),
+        resolution: float = Query(0.1, ge=0.05, le=10, allow_inf_nan=False),
+        max_match_rmse: float = Query(0.1, gt=0, le=1, allow_inf_nan=False),
+    ):
+        result = analyze_slam(
+            request.app.state.service.replay(run_id), sensor, encoder, resolution, max_match_rmse
+        )
+        return JSONResponse(
+            {"run_id": run_id, **result},
+            headers={"Content-Disposition": f'attachment; filename="{run_id}-slam.json"'},
         )
 
     web = Path(__file__).parent / "web"

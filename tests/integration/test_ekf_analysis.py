@@ -116,14 +116,21 @@ def test_config_remains_readable_during_result_export(tmp_path, monkeypatch):
 
     exporting, release = threading.Event(), threading.Event()
     original = Path.write_text
+    original_replace = Path.replace
+
+    def locked_config(path, target):
+        if Path(target).name == "config.json" and Path(target).exists():
+            raise PermissionError("Windows reader holds the published setup open")
+        return original_replace(path, target)
 
     def blocked_write(path, text, *args, **kwargs):
-        if path.name == "config.pending.json" and (path.parent / "config.json").exists():
+        if path.name == "metadata.json":
             exporting.set()
             assert release.wait(5)
         return original(path, text, *args, **kwargs)
 
     monkeypatch.setattr(Path, "write_text", blocked_write)
+    monkeypatch.setattr(Path, "replace", locked_config)
     service = RunService(tmp_path)
     config = RunConfig.model_validate({"commands": [{"left": 1, "right": 1, "steps": 2}]})
     try:
