@@ -7,7 +7,7 @@ the expanded product is nearly ready for industry use.
 The next product phases are:
 
 1. Saved acceptance policies and regression checks. The first run-pair workflow
-   is implemented; scenario suites and navigation outcome rules still need work.
+   and navigation goal checks are implemented; scenario suites still need work.
 2. Reproducible experiment packages with source and dependency provenance.
 3. Real MCAP/ROS 2 recording import, topic mapping and clock/transform diagnostics.
 4. Synchronized debugging timelines, events and linked comparisons.

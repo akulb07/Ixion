@@ -101,12 +101,33 @@ export function RegressionPanel({
           ))}
         </select>
       </label>
-      <button onClick={() => {
-        reset();
-        setPolicy(JSON.stringify({ name: "Navigation goal acceptance", require_goal_reached: true,
-          allowed_config_changes: [], allow_software_change: false,
-          rules: [{name: "No collisions", metric: "collision_count", maximum: 0}] }, null, 2));
-      }}>Use navigation acceptance policy</button>
+      <button
+        onClick={() => {
+          reset();
+          setPolicy(
+            JSON.stringify(
+              {
+                name: "Navigation goal acceptance",
+                require_goal_reached: true,
+                max_goal_error_m: 0.1,
+                allowed_config_changes: [],
+                allow_software_change: false,
+                rules: [
+                  {
+                    name: "No collisions",
+                    metric: "collision_count",
+                    maximum: 0,
+                  },
+                ],
+              },
+              null,
+              2,
+            ),
+          );
+        }}
+      >
+        Use navigation acceptance policy
+      </button>
       <label>
         Acceptance policy JSON
         <textarea

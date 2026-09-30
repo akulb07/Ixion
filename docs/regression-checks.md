@@ -26,8 +26,18 @@ offline analysis panel metrics are not automatically included.
 
 Candidate execution must complete normally. Missing data is inconclusive.
 Failure takes precedence over inconclusive when combining checks. Normal execution
-does not necessarily mean navigation reached its goal; an explicit navigation-goal
-rule is still needed before using this as a navigation acceptance suite.
+does not necessarily mean navigation reached its goal. `require_goal_reached: true`
+requires a recorded `reached` outcome; missing or unknown outcomes are inconclusive.
+This outcome reflects the controller's estimated position, so wheel slip can make
+it report arrival while the simulated robot is still short of the destination.
+
+`max_goal_error_m` checks the simulated final ground-truth position against the
+configured endpoint. The navigation preset enables both checks with a 0.1 m
+endpoint tolerance. Change that tolerance for the actual task. It is endpoint
+error, not path-tracking error, and it cannot be used as real-robot ground truth.
+Use **Use navigation acceptance policy** in the workspace, or
+`configs/navigation-acceptance.json` with the CLI. Loading the preset replaces the
+policy editor contents; previously downloaded policies are unchanged.
 
 Config differences apart from names make the result inconclusive until their exact
 comparison paths are listed in `allowed_config_changes`. Array differences use

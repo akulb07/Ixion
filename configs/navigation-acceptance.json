@@ -1,6 +1,7 @@
 {
   "name": "Navigation goal acceptance",
   "require_goal_reached": true,
+  "max_goal_error_m": 0.1,
   "allowed_config_changes": [],
   "allow_software_change": false,
   "rules": [

@@ -152,3 +152,43 @@ def test_signed_bounds_zero_baseline_and_software_acknowledgment(monkeypatch):
     assert result["status"] == "pass" and result["checks"][-1]["measured"] == -0.2
     comparison["runs"][1]["metrics"]["heading"] = -0.3
     assert regression.check_regression(None, request)["status"] == "fail"
+
+
+def test_navigation_checks_distinguish_estimated_arrival_from_actual_goal(tmp_path):
+    from tests.integration.test_navigation import config as navigation_config
+
+    design = policy(
+        require_goal_reached=True,
+        max_goal_error_m=0.1,
+        allowed_config_changes=["faults"],
+        rules=[{"name": "no collisions", "metric": "collision_count", "maximum": 0}],
+    )
+    with TestClient(create_app(tmp_path)) as client:
+        service = client.app.state.service
+        baseline = finished(service, service.submit(navigation_config())["id"])
+        for setup, expected in [
+            (navigation_config(), "pass"),
+            (
+                navigation_config(
+                    faults=[
+                        {"name": "slip", "kind": "wheel_slip", "target": "both", "magnitude": 0.5}
+                    ]
+                ),
+                "fail",
+            ),
+            (config(), "inconclusive"),
+        ]:
+            candidate = finished(service, service.submit(setup)["id"])
+            spec = RegressionRequest(
+                baseline_id=baseline["id"], candidate_id=candidate["id"], policy=design
+            )
+            result = client.post("/api/regressions", json=spec.model_dump(mode="json")).json()
+            assert result["status"] == expected
+            checks = {check["name"]: check for check in result["checks"]}
+            if expected == "fail":
+                assert checks["Navigation goal reached"]["status"] == "pass"
+                assert checks["Simulated final goal error"]["measured"] > 0.45
+            if expected == "inconclusive":
+                assert checks["Navigation goal reached"]["status"] == "inconclusive"
+                assert checks["Simulated final goal error"]["measured"] is None
+            assert check_saved_runs(tmp_path, spec)["checks"] == result["checks"]

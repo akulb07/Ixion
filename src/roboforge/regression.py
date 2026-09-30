@@ -35,6 +35,7 @@ class RegressionPolicy(Schema):
     allowed_config_changes: tuple[str, ...] = Field(default=(), max_length=64)
     allow_software_change: bool = False
     require_goal_reached: bool = False
+    max_goal_error_m: Real | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def unique_names(self):
@@ -93,9 +94,33 @@ def check_regression(service, specification: RegressionRequest):
         add(
             "Navigation goal reached",
             "pass" if outcome == "reached" else "fail" if known else "inconclusive",
-            f"Recorded navigation outcome: {outcome}" if known
+            f"Recorded navigation outcome: {outcome}"
+            if known
             else "Navigation outcome unavailable or unsupported; completion does not prove goal arrival",
             candidate=outcome,
+        )
+    if policy.max_goal_error_m is not None:
+        navigation = candidate["config"].get("navigation")
+        metrics = candidate["metrics"] or {}
+        path = navigation.get("path", []) if navigation else []
+        x, y = metrics.get("final_x_m"), metrics.get("final_y_m")
+        distance = None
+        if path and x is not None and y is not None:
+            distance = math.hypot(x - path[-1]["x"], y - path[-1]["y"])
+            if not math.isfinite(distance):
+                distance = None
+        add(
+            "Simulated final goal error",
+            "inconclusive"
+            if distance is None
+            else "pass"
+            if distance <= policy.max_goal_error_m
+            else "fail",
+            "Simulated ground-truth endpoint distance to configured goal"
+            if distance is not None
+            else "Configured navigation goal or finite final-position measurements unavailable",
+            measured=distance,
+            maximum=policy.max_goal_error_m,
         )
     unexpected = [
         row["path"]
