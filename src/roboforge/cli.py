@@ -43,8 +43,44 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--baseline", required=True)
     check.add_argument("--candidate", required=True)
     check.add_argument("--output", type=Path, required=True)
+    package = subparsers.add_parser(
+        "bundle", help="Package two saved runs and their acceptance check"
+    )
+    package.add_argument("policy", type=Path)
+    package.add_argument("--store", type=Path, required=True)
+    package.add_argument("--baseline", required=True)
+    package.add_argument("--candidate", required=True)
+    package.add_argument("--output", type=Path, required=True)
+    verify_bundle = subparsers.add_parser(
+        "bundle-check", help="Verify a portable recorded-check bundle"
+    )
+    verify_bundle.add_argument("archive", type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.command in {"bundle", "bundle-check"}:
+            from roboforge.bundles import check_bundle, export_bundle
+            from roboforge.regression import RegressionPolicy, RegressionRequest
+
+            if args.command == "bundle":
+                policy = RegressionPolicy.model_validate_json(
+                    args.policy.read_text(encoding="utf-8")
+                )
+                result = export_bundle(
+                    args.store,
+                    RegressionRequest(
+                        baseline_id=args.baseline, candidate_id=args.candidate, policy=policy
+                    ),
+                    args.output,
+                )
+                print(
+                    f"Saved check bundle: {args.output.resolve()}; acceptance: {result['status']}"
+                )
+                return 0
+            result = check_bundle(args.archive)
+            print(f"Verified bundle; acceptance: {result['status']}")
+            for item in result["checks"]:
+                print(f"  {item['status']}: {item['name']} — {item['reason']}")
+            return {"pass": 0, "fail": 3, "inconclusive": 4}[result["status"]]
         if args.command == "check":
             import json
 

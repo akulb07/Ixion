@@ -9,6 +9,8 @@ The next product phases are:
 1. Saved acceptance policies and regression checks. The first run-pair workflow
    and navigation goal checks are implemented; scenario suites still need work.
 2. Reproducible experiment packages with source and dependency provenance.
+   Portable recorded-check ZIPs and independent verification are implemented;
+   original source/dependency capture and simulation reruns remain to be added.
 3. Real MCAP/ROS 2 recording import, topic mapping and clock/transform diagnostics.
 4. Synchronized debugging timelines, events and linked comparisons.
 5. External Python algorithms, process isolation and ROS 2 adapters.
