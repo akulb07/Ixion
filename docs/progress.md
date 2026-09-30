@@ -55,7 +55,11 @@ test counts I had written down at each point.
   dropout laboratory and a separate fault-free baseline workflow. Repeated seeded
   runs produce identical sensor, controller, trajectory and fault-event exports.
 
-Current release plan: **28 of 32 milestones complete**; see [roadmap.md](roadmap.md).
-Next up: benchmark suite and experiment report exports. Arms and grippers remain a later manipulation phase;
+- 29 — standalone HTML and trial CSV reports for the four-case planner suite,
+  CLI experiments and browser sweeps. Saved designs, seeds, failures and exact
+  measurements stay in the exports; CLI report files have manifest hashes.
+
+Current release plan: **29 of 32 milestones complete**; see [roadmap.md](roadmap.md).
+Next up: robot/environment editing and workspace workflows. Arms and grippers remain a later manipulation phase;
 the mobile-robot experiment workflow comes first. Test counts above are from
 each milestone, not current totals.

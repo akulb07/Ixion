@@ -57,10 +57,17 @@ deviation. An empty cell is unavailable, not zero. These statistics do not corre
 for model error, correlated seeds or selection bias. Use enough independent trials
 for the conclusion being tested.
 
-**Report** downloads the current snapshot, with trial statuses, run IDs, config
-hashes and group statistics. **Design** downloads the batch specification.
+**HTML report** downloads a standalone readable snapshot, including the design,
+trial statuses, run IDs, config hashes and group statistics. Expand individual
+trials for their measurements. **Trial CSV** exports every trial with `metric.`
+columns; missing measurements stay blank. **JSON report** keeps the full snapshot
+for code. Downloads do not wait for an active sweep to finish or rerun anything.
+The HTML works offline and has a light print stylesheet; expand the details you
+want before printing. Text beginning with spreadsheet formula characters gets
+an apostrophe in CSV; JSON keeps the original text. Negative numeric measurements
+stay numeric. **Design** downloads the batch specification.
 **Resolved inputs** includes each exact valid config and the attempted inputs
-for invalid trials, in trial order. All three are saved locally; each submitted
+for invalid trials, in trial order. These downloads are saved locally; each submitted
 run also keeps its usual integrity manifest and artifacts.
 
 ## API and limits
@@ -70,7 +77,8 @@ run also keeps its usual integrity manifest and artifacts.
 - `GET /api/experiments?offset=0&limit=20`: saved batch history.
 - `GET /api/experiments/{id}`: progress, trials and group statistics.
 - `POST /api/experiments/{id}/cancel`: cooperative cancellation.
-- `GET /api/experiments/{id}/report`: download a report snapshot.
+- `GET /api/experiments/{id}/report?format=json|html|csv`: download a snapshot
+  (JSON is the default).
 - `GET /api/experiments/{id}/artifacts/{filename}`: design, inputs or batch record.
 
 The specification uses the existing CLI experiment format: `name`, `base`,

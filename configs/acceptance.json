@@ -1,0 +1,9 @@
+{
+  "name": "Mobile robot smoke check",
+  "allowed_config_changes": [],
+  "allow_software_change": false,
+  "rules": [
+    {"name": "No collisions", "metric": "collision_count", "maximum": 0},
+    {"name": "Duration unchanged", "metric": "duration_s", "mode": "delta", "minimum": -0.000001, "maximum": 0.000001}
+  ]
+}

@@ -1,5 +1,6 @@
 """Optional FastAPI transport for the local RoboForge run service."""
 
+import json
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
@@ -21,6 +22,8 @@ from roboforge.experiments import paired_differences
 from roboforge.mapping_analysis import analyze_map
 from roboforge.odometry_analysis import analyze_odometry
 from roboforge.planning_service import PlanningRequest, PlanningService
+from roboforge.regression import RegressionRequest, check_regression
+from roboforge.reports import report_html, trial_csv
 from roboforge.service import RunService, ServiceError, resource_estimate
 from roboforge.slam_analysis import analyze_slam
 
@@ -258,11 +261,32 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
     def cancel_batch(batch_id: str, request: Request):
         return request.app.state.batches.cancel(batch_id)
 
+    @app.post("/api/regressions")
+    def regression(specification: RegressionRequest, request: Request):
+        return check_regression(request.app.state.service, specification)
+
     @app.get("/api/experiments/{batch_id}/report")
-    def batch_report(batch_id: str, request: Request):
+    def batch_report(
+        batch_id: str, request: Request, format: Literal["json", "html", "csv"] = "json"
+    ):
+        batches = request.app.state.batches
+        snapshot = batches.get(batch_id)
+        headers = {"Content-Disposition": f'attachment; filename="{batch_id}-report.{format}"'}
+        if format == "csv":
+            return Response(trial_csv(snapshot), media_type="text/csv", headers=headers)
+        if format == "html":
+            design = json.loads(
+                batches.artifact(batch_id, "experiment.json").read_text(encoding="utf-8")
+            )
+            headers["Content-Security-Policy"] = (
+                "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+            )
+            return Response(
+                report_html(snapshot, design=design), media_type="text/html", headers=headers
+            )
         return JSONResponse(
-            request.app.state.batches.get(batch_id),
-            headers={"Content-Disposition": f'attachment; filename="{batch_id}-report.json"'},
+            snapshot,
+            headers=headers,
         )
 
     @app.get("/api/experiments/{batch_id}/artifacts/{filename}")

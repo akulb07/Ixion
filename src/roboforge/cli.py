@@ -37,8 +37,35 @@ def main(argv: list[str] | None = None) -> int:
     )
     serve.add_argument("--output", type=Path, default=Path("results/service"))
     serve.add_argument("--port", type=int, default=8765)
+    check = subparsers.add_parser("check", help="Check saved runs against an acceptance policy")
+    check.add_argument("policy", type=Path)
+    check.add_argument("--store", type=Path, required=True)
+    check.add_argument("--baseline", required=True)
+    check.add_argument("--candidate", required=True)
+    check.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "check":
+            import json
+
+            from roboforge.regression import RegressionPolicy, RegressionRequest, check_saved_runs
+
+            if args.output.resolve().is_relative_to(args.store.resolve()):
+                raise ValueError("check output must be outside the run store")
+            policy = RegressionPolicy.model_validate_json(args.policy.read_text(encoding="utf-8"))
+            report = check_saved_runs(
+                args.store,
+                RegressionRequest(
+                    baseline_id=args.baseline, candidate_id=args.candidate, policy=policy
+                ),
+            )
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(json.dumps(report, indent=2, allow_nan=False))
+            print(
+                f"{report['status']}: {len(report['checks'])} checks; report: {args.output.resolve()}"
+            )
+            return {"pass": 0, "fail": 3, "inconclusive": 4}[report["status"]]
         if args.command == "serve":
             if not 1 <= args.port <= 65535:
                 raise ValueError("port must be between 1 and 65535")

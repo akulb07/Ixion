@@ -1,0 +1,9 @@
+{
+  "name": "Navigation goal acceptance",
+  "require_goal_reached": true,
+  "allowed_config_changes": [],
+  "allow_software_change": false,
+  "rules": [
+    {"name": "No collisions", "metric": "collision_count", "maximum": 0}
+  ]
+}

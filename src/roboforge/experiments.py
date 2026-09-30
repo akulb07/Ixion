@@ -17,6 +17,7 @@ from pydantic import Field, model_validator
 
 from roboforge import __version__
 from roboforge.config import RunConfig, Schema, Steps, _UniqueKeyLoader
+from roboforge.reports import report_html, trial_csv
 from roboforge.simulation import SimulationResult, Simulator
 
 
@@ -215,6 +216,7 @@ def run_experiment(
     directory.mkdir(parents=True, exist_ok=False)
     _write_json(directory / "experiment.json", config.model_dump(mode="json"))
     records = []
+    created = datetime.now(UTC).isoformat()
     for index, (group, parameters, seed, document, resolved, validation_error) in enumerate(
         variants
     ):
@@ -271,6 +273,14 @@ def run_experiment(
             staging,
             {
                 "format_version": 1,
+                "id": directory.name,
+                "name": config.name,
+                "software_version": __version__,
+                "created_utc": created,
+                "finished_utc": datetime.now(UTC).isoformat()
+                if len(records) == len(variants)
+                else None,
+                "status": "completed" if len(records) == len(variants) else "running",
                 "expected_trials": len(variants),
                 "finished_trials": len(records),
                 "trials": records,
@@ -285,6 +295,12 @@ def run_experiment(
         writer.writeheader()
         for record in records:
             writer.writerow({**{key: record[key] for key in columns}, **record["metrics"]})
+    report = json.loads((directory / "report.json").read_text(encoding="utf-8"))
+    (directory / "trials.csv").write_text(trial_csv(report), encoding="utf-8", newline="")
+    (directory / "report.html").write_text(
+        report_html(report, design=config.model_dump(mode="json")), encoding="utf-8"
+    )
+    write_manifest(directory)
     return directory
 
 

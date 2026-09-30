@@ -436,7 +436,15 @@ export function ExperimentPanel({
                     {batch.cancel_requested ? "Cancelling…" : "Cancel sweep"}
                   </button>
                 )}
-                <a href={`/api/experiments/${batch.id}/report`}>Report ↓</a>
+                <a href={`/api/experiments/${batch.id}/report?format=html`}>
+                  HTML report ↓
+                </a>
+                <a href={`/api/experiments/${batch.id}/report?format=csv`}>
+                  Trial CSV ↓
+                </a>
+                <a href={`/api/experiments/${batch.id}/report`}>
+                  JSON report ↓
+                </a>
                 <a
                   href={`/api/experiments/${batch.id}/artifacts/experiment.json`}
                 >

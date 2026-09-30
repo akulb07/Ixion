@@ -44,3 +44,11 @@ artifacts remain separately inspectable exports.
 
 CLI: `roboforge replay <trial-directory> --time 1.25` prints a recorded snapshot.
 Manifest hashes detect accidental file corruption, not authenticity or signatures.
+## Portable reports
+
+CLI experiments also save `report.html` and `trials.csv`. The HTML includes the
+design, summary and every recorded trial, and can be opened without a server.
+Expand a trial to see its measurements and configuration hash. The existing
+`metrics.csv` remains available. A root `manifest.json` hashes the report files;
+each trial directory still has its own manifest. Reports describe recorded
+measurements and do not rerun the simulator.

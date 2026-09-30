@@ -26,7 +26,12 @@ demo is illustrative, not a statistically powered comparison or universal rankin
 
 `roboforge benchmark --output results/benchmarks --seed 42 --iterations 500`
 creates a unique directory with configuration, world fixtures, every path, JSON/CSV
-summaries and SHA256 manifest. Exit 0 means the benchmark report was produced;
+summaries and SHA256 manifest. `report.html` is a standalone report with the exact
+design and geometry inside it; `trials.csv` has one row per attempted search.
+The HTML uses the same dark charcoal and purple theme as the workspace, with a
+light print stylesheet. Open the details you want before printing. JSON and CSV
+keep full numeric precision. All these files are included in the manifest.
+Exit 0 means the benchmark report was produced;
 individual search failures remain visible in the report. Python callers can choose
 multiple seeds/cases/algorithms through BenchmarkConfig. Localization/control
 comparisons use the separate experiment engine; map-quality and hardware-speed

@@ -1,10 +1,12 @@
 """Versioned static-world planner benchmarks with explicit budgets and failures."""
 
 import csv
+import hashlib
 import json
 import time
 import uuid
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -16,6 +18,7 @@ from roboforge.config import Circle, Environment, Positive, Rectangle, Schema, S
 from roboforge.experiments import write_manifest
 from roboforge.geometry import Vector2
 from roboforge.planning import PlanningWorld, grid_plan, sampling_plan
+from roboforge.reports import report_html, trial_csv
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +125,22 @@ def run_benchmarks(config: BenchmarkConfig, output: str | Path) -> Path:
     }
     (directory / "cases.json").write_text(json.dumps(worlds, indent=2), encoding="utf-8")
     records = []
+    created = datetime.now(UTC).isoformat()
+    report = {
+        "id": directory.name,
+        "suite_version": 1,
+        "software_version": __version__,
+        "created_utc": created,
+        "status": "running",
+        "expected_trials": len(config.cases) * len(config.algorithms) * len(config.seeds),
+        "finished_trials": 0,
+        "specification_sha256": hashlib.sha256(
+            json.dumps(
+                config.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+            ).encode()
+        ).hexdigest(),
+        "trials": records,
+    }
     for name in config.cases:
         case = cases[name]
         for algorithm in config.algorithms:
@@ -192,17 +211,13 @@ def run_benchmarks(config: BenchmarkConfig, output: str | Path) -> Path:
                     record["status"] = "error"
                     record["error"] = {"type": type(exc).__name__, "message": str(exc)}
                 records.append(record)
+                report["finished_trials"] = len(records)
+                if len(records) == report["expected_trials"]:
+                    report.update(status="completed", finished_utc=datetime.now(UTC).isoformat())
                 pending = directory / "report.pending.json"
                 pending.write_text(
                     json.dumps(
-                        {
-                            "suite_version": 1,
-                            "software_version": __version__,
-                            "expected_trials": len(config.cases)
-                            * len(config.algorithms)
-                            * len(config.seeds),
-                            "trials": records,
-                        },
+                        report,
                         indent=2,
                     ),
                     encoding="utf-8",
@@ -235,5 +250,18 @@ def run_benchmarks(config: BenchmarkConfig, output: str | Path) -> Path:
         writer.writeheader()
         writer.writerows(summaries)
     (directory / "summary.json").write_text(json.dumps(summaries, indent=2), encoding="utf-8")
+    (directory / "trials.csv").write_text(
+        trial_csv(report, "benchmark"), encoding="utf-8", newline=""
+    )
+    (directory / "report.html").write_text(
+        report_html(
+            report,
+            kind="benchmark",
+            design=config.model_dump(mode="json"),
+            cases=worlds,
+            summaries=summaries,
+        ),
+        encoding="utf-8",
+    )
     write_manifest(directory)
     return directory

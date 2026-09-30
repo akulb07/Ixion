@@ -5,11 +5,16 @@ It has grown a bit over time. I keep adding little labs when something works.
 Some parts are in much better shape than others; the model notes explain the
 assumptions when it matters.
 
-**Version: 0.28.0.** Fault schedules can now be edited in the workspace. There is
-an encoder-dropout lab and a quick way to prepare a fault-free baseline. See [the release roadmap](docs/roadmap.md)
-for the 28 completed checkpoints and 4 remaining milestones.
+**Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
+reports and trial CSV files. Browser sweeps have the same downloads. See
+[the release roadmap](docs/roadmap.md) for the 29 completed checkpoints and 3
+remaining milestones.
 
 ## Getting it to run
+
+The next direction is practical regression testing with real robot data and external
+algorithms. The first [acceptance checks](docs/regression-checks.md) work with saved
+RoboForge runs in the comparison workspace or through `roboforge check`.
 
 Python 3.12+. From this folder:
 

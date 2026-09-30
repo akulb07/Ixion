@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { active, ready, request } from "./api";
 import type { Comparison, Job } from "./types";
+import { RegressionPanel } from "./RegressionPanel";
 
 const format = (value: number | null) =>
   value === null
@@ -253,6 +254,11 @@ export function ComparisonPanel({
           )}
           {result && (
             <>
+              <RegressionPanel
+                key={result.runs.map((run) => run.id).join(":")}
+                baseline={result.baseline_id}
+                candidates={result.runs.slice(1).map((run) => run.id)}
+              />
               <p role="status" className="hint">
                 {result.same_setup
                   ? "Same configuration apart from names."
