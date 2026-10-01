@@ -21,6 +21,8 @@ Both acceptance commands support [JUnit reporting for CI](docs/ci-checks.md)
 through `--junit`.
 The optional [MCAP inspector](docs/recordings.md) inventories real recording topics,
 message types and container timing without decoding or changing the original log.
+The [ROS 2 odometry extractor](docs/recorded-odometry.md) converts a selected CDR
+odometry topic to JSON estimates with original timestamps, frames and covariances.
 
 Python 3.12+. From this folder:
 

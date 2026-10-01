@@ -35,8 +35,9 @@ recordings. Outputs must be new and cannot replace the input. Exit 0 means the
 inventory was produced; exit 2 means inspection or output failed. Timestamp warnings
 are measurements in the report, not an acceptance verdict.
 
-This does not yet decode odometry/IMU/LiDAR values, resolve transforms, inspect
-sensor header capture times, map topics to algorithms, import into the workspace,
-or treat recorded poses as ground truth. Those are the next data-workflow steps.
+The inspector itself does not decode message values. The separate
+[ROS 2 odometry extractor](recorded-odometry.md) reads a selected topic and its
+header timestamps. IMU/LiDAR decoding, transforms, algorithm topic mapping and
+workspace replay remain pending. Recorded poses are never assumed to be ground truth.
 
 Reader behaviour: [MCAP Python reader documentation](https://mcap.dev/docs/python/mcap-apidoc/mcap.reader).

@@ -14,8 +14,9 @@ The next product phases are:
    recorded for new service runs. Source archives, locked environments and simulation
    reruns remain to be added.
 3. Real MCAP/ROS 2 recording import, topic mapping and clock/transform diagnostics.
-   Read-only MCAP channel and timestamp inspection is implemented. Payload decoding,
-   ROS topic mapping and transform-aware replay are still pending.
+   MCAP inventory and selected ROS 2 odometry extraction are implemented, preserving
+   header timestamps, frames and covariance. IMU/LiDAR decoding, algorithm topic
+   mapping and transform-aware replay are still pending.
 4. Synchronized debugging timelines, events and linked comparisons.
 5. External Python algorithms, process isolation and ROS 2 adapters.
 6. Repeatable navigation scenario suites and simulator integration.

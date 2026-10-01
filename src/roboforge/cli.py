@@ -63,8 +63,30 @@ def main(argv: list[str] | None = None) -> int:
     inspect.add_argument("recording", type=Path)
     inspect.add_argument("--output", type=Path, required=True)
     inspect.add_argument("--max-messages", type=int, default=1_000_000)
+    odometry = subparsers.add_parser(
+        "extract-odometry", help="Decode a recorded ROS 2 odometry topic"
+    )
+    odometry.add_argument("recording", type=Path)
+    odometry.add_argument("--topic", required=True)
+    odometry.add_argument("--output", type=Path, required=True)
+    odometry.add_argument("--max-samples", type=int, default=100_000)
     args = parser.parse_args(argv)
     try:
+        if args.command == "extract-odometry":
+            import json
+
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.recorded_odometry import extract_odometry
+
+            validate_output_paths([args.output], protected=[args.recording])
+            report = extract_odometry(args.recording, args.topic, max_samples=args.max_samples)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(json.dumps(report, indent=2, allow_nan=False))
+            print(
+                f"Extracted {report['sample_count']} odometry estimates; report: {args.output.resolve()}"
+            )
+            return 0
         if args.command == "inspect-recording":
             import json
 
