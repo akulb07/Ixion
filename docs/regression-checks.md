@@ -1,5 +1,8 @@
 # Acceptance checks
 
+For CI test results, add `--junit results/check.xml`; see [CI checks](ci-checks.md)
+for result mapping, exit codes and artifact handling.
+
 The first testing workflow compares two saved service runs without rerunning them.
 In Compare runs, choose the baseline, compare the runs, and use Acceptance checks.
 The JSON policy can be saved and pasted back later. The check report includes the

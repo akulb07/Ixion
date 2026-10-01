@@ -17,6 +17,10 @@ algorithms. The first [acceptance checks](docs/regression-checks.md) work with s
 RoboForge runs in the comparison workspace or through `roboforge check`.
 Use [portable check bundles](docs/portable-checks.md) to send a saved check and its
 run artifacts to another machine with `roboforge bundle` and `roboforge bundle-check`.
+Both acceptance commands support [JUnit reporting for CI](docs/ci-checks.md)
+through `--junit`.
+The optional [MCAP inspector](docs/recordings.md) inventories real recording topics,
+message types and container timing without decoding or changing the original log.
 
 Python 3.12+. From this folder:
 

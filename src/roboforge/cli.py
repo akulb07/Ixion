@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--baseline", required=True)
     check.add_argument("--candidate", required=True)
     check.add_argument("--output", type=Path, required=True)
+    check.add_argument("--junit", type=Path, help="Also write JUnit XML for CI")
     package = subparsers.add_parser(
         "bundle", help="Package two saved runs and their acceptance check"
     )
@@ -55,8 +56,30 @@ def main(argv: list[str] | None = None) -> int:
         "bundle-check", help="Verify a portable recorded-check bundle"
     )
     verify_bundle.add_argument("archive", type=Path)
+    verify_bundle.add_argument("--junit", type=Path, help="Write JUnit XML for CI")
+    inspect = subparsers.add_parser(
+        "inspect-recording", help="Inventory an MCAP without decoding payloads"
+    )
+    inspect.add_argument("recording", type=Path)
+    inspect.add_argument("--output", type=Path, required=True)
+    inspect.add_argument("--max-messages", type=int, default=1_000_000)
     args = parser.parse_args(argv)
     try:
+        if args.command == "inspect-recording":
+            import json
+
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.recordings import inspect_mcap
+
+            validate_output_paths([args.output], protected=[args.recording])
+            report = inspect_mcap(args.recording, max_messages=args.max_messages)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(json.dumps(report, indent=2, allow_nan=False))
+            print(
+                f"Inspected {report['messages']} messages on {len(report['channels'])} channels; report: {args.output.resolve()}"
+            )
+            return 0
         if args.command in {"bundle", "bundle-check"}:
             from roboforge.bundles import check_bundle, export_bundle
             from roboforge.regression import RegressionPolicy, RegressionRequest
@@ -76,7 +99,12 @@ def main(argv: list[str] | None = None) -> int:
                     f"Saved check bundle: {args.output.resolve()}; acceptance: {result['status']}"
                 )
                 return 0
+            from roboforge.ci_reports import validate_output_paths, write_junit
+
+            validate_output_paths([args.junit], protected=[args.archive])
             result = check_bundle(args.archive)
+            if args.junit:
+                write_junit(args.junit, result)
             print(f"Verified bundle; acceptance: {result['status']}")
             for item in result["checks"]:
                 print(f"  {item['status']}: {item['name']} — {item['reason']}")
@@ -84,10 +112,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "check":
             import json
 
+            from roboforge.ci_reports import validate_output_paths, write_junit
             from roboforge.regression import RegressionPolicy, RegressionRequest, check_saved_runs
 
-            if args.output.resolve().is_relative_to(args.store.resolve()):
-                raise ValueError("check output must be outside the run store")
+            validate_output_paths(
+                [args.output, args.junit], protected=[args.policy], store=args.store
+            )
             policy = RegressionPolicy.model_validate_json(args.policy.read_text(encoding="utf-8"))
             report = check_saved_runs(
                 args.store,
@@ -98,6 +128,8 @@ def main(argv: list[str] | None = None) -> int:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             with args.output.open("x", encoding="utf-8") as stream:
                 stream.write(json.dumps(report, indent=2, allow_nan=False))
+            if args.junit:
+                write_junit(args.junit, report)
             print(
                 f"{report['status']}: {len(report['checks'])} checks; report: {args.output.resolve()}"
             )

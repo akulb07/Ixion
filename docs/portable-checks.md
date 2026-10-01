@@ -9,6 +9,9 @@ roboforge bundle configs/navigation-acceptance.json --store results/service --ba
 roboforge bundle-check results/navigation-check.zip
 ```
 
+`bundle-check` also accepts `--junit results/check.xml` for CI test reporting.
+See [CI checks](ci-checks.md). The XML output must be a new file.
+
 Replace the two IDs with saved run IDs. The output must be new and outside the run
 store. Creating a package returns 0 even when its acceptance result is a failure:
 packaging a failure is a normal use case. `bundle-check` returns 0 for pass, 3 for
