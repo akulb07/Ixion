@@ -81,6 +81,18 @@ export type Config = {
   faults: Fault[];
 };
 export type Job = {
+  provenance?: {
+    captured_utc: string;
+    capture_stage: string;
+    python: { version: string; implementation: string };
+    dependencies: Record<string, string>;
+    source: {
+      sha256: string | null;
+      git_revision: string | null;
+      git_dirty: boolean | null;
+      notes: string[];
+    };
+  };
   id: string;
   name: string;
   status: string;
@@ -164,6 +176,8 @@ export type Comparison = {
   baseline_id: string;
   same_setup: boolean;
   same_software: boolean;
+  same_source?: boolean | null;
+  same_dependencies?: boolean | null;
   runs: (Job & {
     config: Config;
     software_version: string;

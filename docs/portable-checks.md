@@ -27,15 +27,25 @@ existing store. Archives are limited to 64 members and 128 MiB uncompressed.
 Duplicate names and unexpected paths are rejected. Existing packages are never
 overwritten.
 
-The dependency and Python versions describe the environment creating the package.
-Original run source revisions and dependency environments are not available yet,
-so the package labels them as unknown. Package hashes detect corruption; they do
+The standalone export-environment record describes the environment creating the
+package. New service runs also carry their original `provenance` inside `job.json`:
+Python and core dependency versions, operating-system family, architecture, a
+fingerprint of RoboForge's Python source and Git revision/dirty state when available.
+That record is captured by the worker before simulation and also survives failures.
+Older runs remain without provenance; exporting them does not invent it.
+
+The source fingerprint covers files on disk at capture time, not loaded bytecode,
+frontend assets, native dependencies or a source archive. Restart the service after
+code changes; editing code underneath a running Python process can make its loaded
+code differ from the disk snapshot. Git failures are recorded as unavailable and do
+not prevent a run. Machine paths, hostnames, environment variables and Git remotes
+are not collected. Package hashes detect corruption; they do
 not authenticate an author who could replace both the data and the manifest.
 If a future evaluator produces different check results, verification fails rather
 than silently changing the recorded outcome. Use the recorded evaluator version
 when investigating that difference.
 
-This first version is CLI-only and supports RoboForge service runs. Full source
-provenance, repeatable simulation execution and workspace ZIP downloads are still
+This first version is CLI-only and supports RoboForge service runs. Source archives,
+locked environments, repeatable simulation execution and workspace ZIP downloads are still
 separate work. A package can include application error text and all selected run
 telemetry; inspect it before sharing it outside the team.

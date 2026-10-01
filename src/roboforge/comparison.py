@@ -88,6 +88,8 @@ def compare_runs(service: RunService, specification: ComparisonRequest) -> dict:
         metrics.append({"name": name, "values": values, "deltas": deltas})
 
     differences = _differences([run["config"] for run in runs])
+    sources = [(run.get("provenance") or {}).get("source", {}).get("sha256") for run in runs]
+    dependencies = [(run.get("provenance") or {}).get("dependencies") for run in runs]
     return {
         "format_version": 1,
         "software_version": __version__,
@@ -98,4 +100,8 @@ def compare_runs(service: RunService, specification: ComparisonRequest) -> dict:
         "config_differences": differences,
         "same_setup": not any(row["path"] != "name" for row in differences),
         "same_software": len({run["software_version"] for run in runs}) == 1,
+        "same_source": len(set(sources)) == 1 if all(sources) else None,
+        "same_dependencies": all(item == dependencies[0] for item in dependencies)
+        if all(dependencies)
+        else None,
     }

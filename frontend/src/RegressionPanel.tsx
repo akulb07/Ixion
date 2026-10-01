@@ -7,6 +7,7 @@ type CheckReport = {
     name: string;
     status: string;
     reason: string;
+    provenance_note?: string;
     measured?: number | null;
   }[];
 };
@@ -193,7 +194,12 @@ export function RegressionPanel({
                   <td>{item.name}</td>
                   <td>{item.status}</td>
                   <td>{item.measured ?? "—"}</td>
-                  <td>{item.reason}</td>
+                  <td>
+                    {item.reason}
+                    {item.provenance_note && (
+                      <small>{item.provenance_note}</small>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

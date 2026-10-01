@@ -92,7 +92,7 @@ def export_bundle(store, specification: RegressionRequest, output):
         "RoboForge recorded-check bundle\n\n"
         "Run: roboforge bundle-check this-file.zip\n"
         "This verifies and repeats the acceptance check; it does not rerun the robot.\n"
-        "Run artifacts are under runs/. Original source/dependency provenance is not yet captured.\n"
+        "Run artifacts are under runs/. New service jobs carry execution provenance in job.json; older jobs may not.\n"
         "Hashes detect corruption, not malicious replacement of files and their manifest.\n"
     ).encode()
     files["bundle-manifest.json"] = _json(

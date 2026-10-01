@@ -127,7 +127,12 @@ def check_regression(service, specification: RegressionRequest):
         for row in comparison["config_differences"]
         if row["path"] != "name" and row["path"] not in policy.allowed_config_changes
     ]
-    compatible = not unexpected and (comparison["same_software"] or policy.allow_software_change)
+    software_matches = (
+        comparison["same_software"]
+        and comparison.get("same_source") is not False
+        and comparison.get("same_dependencies") is not False
+    )
+    compatible = not unexpected and (software_matches or policy.allow_software_change)
     add(
         "Comparison compatibility",
         "pass" if compatible else "inconclusive",
@@ -136,6 +141,11 @@ def check_regression(service, specification: RegressionRequest):
         else "Unacknowledged setup or software differences",
         unexpected_config_changes=unexpected,
         same_software=comparison["same_software"],
+        same_source=comparison.get("same_source"),
+        same_dependencies=comparison.get("same_dependencies"),
+        provenance_note="Original source or dependency provenance unavailable for one or more runs"
+        if comparison.get("same_source") is None or comparison.get("same_dependencies") is None
+        else "Source fingerprint and dependency versions recorded for both runs",
     )
     for rule in policy.rules:
         base = (baseline["metrics"] or {}).get(rule.metric)

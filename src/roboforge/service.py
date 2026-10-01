@@ -228,6 +228,12 @@ class RunService:
             with self._lock:
                 record.update(status="running", started_utc=_stamp())
                 _write(path / "job.json", record)
+            from roboforge.provenance import capture_provenance
+
+            provenance = capture_provenance()
+            with self._lock:
+                record["provenance"] = provenance
+                _write(path / "job.json", record)
             result = Simulator(config).run(should_cancel=event.is_set)
             if event.is_set():
                 raise SimulationCancelled("run cancelled before export")

@@ -265,6 +265,13 @@ export function ComparisonPanel({
                   : "Configurations differ; inspect the changed fields below."}{" "}
                 {!result.same_software &&
                   "These runs used different software versions."}
+                {result.same_source === false &&
+                  " Python source fingerprints differ."}
+                {result.same_dependencies === false &&
+                  " Core dependency versions differ."}
+                {(result.same_source == null ||
+                  result.same_dependencies == null) &&
+                  " Original source or dependency provenance is unavailable for some runs."}
               </p>
               <div className="comparison-table-scroll">
                 <table className="comparison-table">
@@ -292,6 +299,48 @@ export function ComparisonPanel({
                             </small>
                           )}
                           <small>v{run.software_version}</small>
+                          {run.provenance ? (
+                            <details>
+                              <summary>Execution provenance</summary>
+                              <small>
+                                Captured: {run.provenance.captured_utc}
+                              </small>
+                              <small>
+                                Python {run.provenance.python.version} ·{" "}
+                                {run.provenance.python.implementation}
+                              </small>
+                              <small>
+                                Source:{" "}
+                                {run.provenance.source.sha256 ?? "unavailable"}
+                              </small>
+                              <small>
+                                Git:{" "}
+                                {run.provenance.source.git_revision ??
+                                  "unavailable"}
+                              </small>
+                              <small>
+                                Working tree:{" "}
+                                {run.provenance.source.git_dirty == null
+                                  ? "unknown"
+                                  : run.provenance.source.git_dirty
+                                    ? "modified"
+                                    : "clean"}
+                              </small>
+                              {Object.entries(run.provenance.dependencies).map(
+                                ([name, version]) => (
+                                  <small key={name}>
+                                    {name}: {version}
+                                  </small>
+                                ),
+                              )}
+                              <small>
+                                Source hash covers files on disk at capture
+                                time, not loaded bytecode.
+                              </small>
+                            </details>
+                          ) : (
+                            <small>Execution provenance unavailable</small>
+                          )}
                           {run.error && (
                             <p className="comparison-error">{run.error}</p>
                           )}

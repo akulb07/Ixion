@@ -42,12 +42,16 @@ policy editor contents; previously downloaded policies are unchanged.
 Config differences apart from names make the result inconclusive until their exact
 comparison paths are listed in `allowed_config_changes`. Array differences use
 the whole array's path, such as `commands`. Software version differences require
-`allow_software_change: true`. These acknowledgments do not prove scenarios are
+`allow_software_change: true`. Recorded source-fingerprint or core-dependency changes
+also need this acknowledgment, even when the package version is unchanged.
+Unavailable provenance in older runs is explicitly reported as unknown; it does
+not retroactively block their checks. These acknowledgments do not prove scenarios are
 scientifically comparable. A delta also needs a completed baseline and both values.
 
 Checks validate recorded configuration and metric checksums. Hashes detect artifact
 changes, not malicious replacement of both artifacts and manifests. This version
-records package versions, not full source/dependency provenance yet. A passing
+records worker-start source fingerprints and core dependency versions for new
+service runs, but not a complete source archive or locked environment. A passing
 single pair is not a statistical result or a safety certification.
 
 `POST /api/regressions` takes `baseline_id`, `candidate_id` and `policy`. Invalid
