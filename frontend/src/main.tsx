@@ -418,12 +418,12 @@ function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            RF
+            IX
           </span>
-          <span>RoboForge</span>
+          <span>Ixion</span>
         </div>
         <div className="top-context">
-          {draft?.name ?? "workspace"} — RoboForge
+          {draft?.name ?? "workspace"} — Ixion
         </div>
         <a className="text-link" href="/docs" target="_blank" rel="noreferrer">
           API reference ↗

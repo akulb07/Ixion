@@ -89,7 +89,7 @@ def export_bundle(store, specification: RegressionRequest, output):
     }
     files["export-environment.json"] = _json(environment)
     files["README.txt"] = (
-        "RoboForge recorded-check bundle\n\n"
+        "Ixion recorded-check bundle\n\n"
         "Run: roboforge bundle-check this-file.zip\n"
         "This verifies and repeats the acceptance check; it does not rerun the robot.\n"
         "Run artifacts are under runs/. New service jobs carry execution provenance in job.json; older jobs may not.\n"

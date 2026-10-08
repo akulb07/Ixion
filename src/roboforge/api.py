@@ -1,4 +1,4 @@
-"""Optional FastAPI transport for the local RoboForge run service."""
+"""Optional FastAPI transport for the local Ixion run service."""
 
 import json
 from contextlib import asynccontextmanager
@@ -160,7 +160,7 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
             app.state.service.close()
 
     app = FastAPI(
-        title="RoboForge Local API",
+        title="Ixion Local API",
         version=__version__,
         lifespan=lifespan,
         description="Validated simulation runs and recorded replay. Local single-user service.",

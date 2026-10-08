@@ -1,19 +1,33 @@
-# RoboForge (robotics lab project)
+# Ixion
 
-So this is a differential-drive robot sim and a place to try some robotics ideas.
-It has grown a bit over time. I keep adding little labs when something works.
-Some parts are in much better shape than others; the model notes explain the
-assumptions when it matters.
+Ixion is becoming an open virtual-prototyping platform for robots: test a robot
+before buying its parts. The goal is to connect real component models, run firmware
+against simulated electronics, and inspect the resulting motion, sensors and power.
+
+The existing 2D simulator and experiment workspace work today. Hardware prototyping
+is in Phase A: a component graph and topology checker, not yet a firmware-driven
+hardware simulation. See the [architecture assessment and implementation plan](docs/hardware-architecture.md).
+
+Previously named RoboForge. Install this checkout with `python -m pip install -e .`
+to get the `ixion` command. The `roboforge` command, Python imports and existing
+run formats remain compatible. The repository URL has not changed.
+
+```sh
+ixion inspect-project examples/esp32_diff_drive/robot.yaml
+```
+
+This checks references, required connections, source conflicts and I2C topology.
+It explicitly reports engineering readiness as unassessed. The example component
+values are assumptions, not purchasing recommendations.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
-[the release roadmap](docs/roadmap.md) for the 29 completed checkpoints and 3
-remaining milestones.
+[the release roadmap](docs/roadmap.md) for the historical simulator checkpoints
+and new hardware phases.
 
 ## Getting it to run
 
-The next direction is practical regression testing with real robot data and external
-algorithms. The first [acceptance checks](docs/regression-checks.md) work with saved
+The existing [acceptance checks](docs/regression-checks.md) work with saved
 RoboForge runs in the comparison workspace or through `roboforge check`.
 Use [portable check bundles](docs/portable-checks.md) to send a saved check and its
 run artifacts to another machine with `roboforge bundle` and `roboforge bundle-check`.

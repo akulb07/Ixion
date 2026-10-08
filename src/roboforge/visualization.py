@@ -110,7 +110,7 @@ def plot_trajectory(result: SimulationResult, path: str | Path) -> Path:
     heading.set(xlabel="Simulation time (s)", ylabel="Unwrapped heading (rad)", title="Orientation")
     for axis in (world, heading):
         axis.grid(alpha=0.2)
-    figure.suptitle(f"RoboForge | {result.config.name}", fontsize=15, fontweight="bold")
+    figure.suptitle(f"Ixion | {result.config.name}", fontsize=15, fontweight="bold")
     figure.supxlabel(
         f"Ideal kinematics · collision mode: {result.config.simulation.collision.mode} · status: {result.status}",
         fontsize=9,

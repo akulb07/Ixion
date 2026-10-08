@@ -79,7 +79,7 @@ def test_workspace_assets_are_local_and_packaged(tmp_path):
     with TestClient(create_app(tmp_path)) as client:
         home = client.get("/")
         assert home.status_code == 200
-        assert "RoboForge" in home.text
+        assert "Ixion" in home.text
         assert 'src="/assets/app.js?v=' in home.text
         for asset in ("app.js", "app.css"):
             response = client.get("/assets/" + asset)

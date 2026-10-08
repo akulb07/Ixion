@@ -36,7 +36,7 @@ def extract_odometry(path, topic, *, max_samples=100_000):
         from mcap_ros2.decoder import DecoderFactory
     except ImportError as exc:
         raise ValueError(
-            'Install ROS 2 decoding with: pip install "roboforge[ros2-recordings]"'
+            'Install ROS 2 decoding with: pip install "ixion[ros2-recordings]"'
         ) from exc
     path = Path(path)
     before = path.stat()

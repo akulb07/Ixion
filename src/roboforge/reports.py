@@ -182,7 +182,7 @@ def report_html(report, *, kind="experiment", design=None, cases=None, summaries
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
-<title>{escape(title)} — RoboForge</title>
+<title>{escape(title)} — Ixion</title>
 <style>
 body{{font:14px/1.5 system-ui,sans-serif;background:#0c0e11;color:#dce0e8;margin:32px}}
 main{{max-width:1400px;margin:auto}}h1{{border-bottom:2px solid #b496ff;padding-bottom:12px}}
@@ -192,7 +192,7 @@ th{{background:#191c22}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;backgro
 summary{{cursor:pointer;padding:10px 0}}.note{{border-left:3px solid #b496ff;padding:12px;background:#171a20}}
 @media print{{body{{background:white;color:black;margin:0;font-size:10px}}h2,summary{{color:#503080}}
 th,pre,.note{{background:white}}.table{{overflow:visible}}thead{{display:table-header-group}}tr{{break-inside:avoid}}}}
-</style></head><body><main><p>RoboForge / {escape(kind)} report</p>
+</style></head><body><main><p>Ixion / {escape(kind)} report</p>
 <h1>{escape(title)}</h1>{_table(["Field", "Recorded value"], metadata.items())}
 <p class="note">{note}</p><h2>Summary</h2>{summary_html}
 <h2>Every trial</h2><p>Blank cells mean unavailable. Times are seconds and path lengths are metres.</p>

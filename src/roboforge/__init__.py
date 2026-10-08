@@ -1,3 +1,3 @@
-"""RoboForge numerical foundations; no simulator or hardware dependencies."""
+"""Ixion numerical foundations; no simulator or hardware dependencies."""
 
 __version__ = "0.29.0"

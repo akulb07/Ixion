@@ -37,7 +37,8 @@ are measurements in the report, not an acceptance verdict.
 
 The inspector itself does not decode message values. The separate
 [ROS 2 odometry extractor](recorded-odometry.md) reads a selected topic and its
-header timestamps. IMU/LiDAR decoding, transforms, algorithm topic mapping and
+header timestamps. The [IMU extractor](recorded-imu.md) preserves measurement
+availability and covariance. LiDAR decoding, transforms, algorithm topic mapping and
 workspace replay remain pending. Recorded poses are never assumed to be ground truth.
 
 Reader behaviour: [MCAP Python reader documentation](https://mcap.dev/docs/python/mcap-apidoc/mcap.reader).

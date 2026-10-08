@@ -15,7 +15,7 @@ def inspect_mcap(path, *, max_messages=1_000_000):
         from mcap.reader import NonSeekingReader
     except ImportError as exc:
         raise ValueError(
-            'Install recording support with: pip install "roboforge[recordings]"'
+            'Install recording support with: pip install "ixion[recordings]"'
         ) from exc
     path = Path(path)
     before = path.stat()

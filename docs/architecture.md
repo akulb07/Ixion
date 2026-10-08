@@ -1,5 +1,9 @@
 # Architecture and implementation boundary
 
+This document describes the historical simulator foundation. For the current
+Ixion hardware-prototyping direction, see the
+[architecture assessment and implementation plan](hardware-architecture.md).
+
 Current release: 0.15.0. EKF, occupancy mapping, incremental and batch SLAM, experiments, replay, timed faults and benchmarks are implemented. See the current README and per-model documents; the foundation sections below are historical rationale. Historical Milestones 1–2 sections below retain their
 original design rationale. Current scheduling is delivered encoder readings ->
 optional wheel PID -> actuator response -> swept kinematics -> sensor captures ->

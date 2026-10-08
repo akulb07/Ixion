@@ -1,6 +1,13 @@
-# Where this is going
+# Ixion roadmap
 
-The direction is now a testing and debugging workbench for mobile-robot teams.
+The priority is now virtual hardware prototyping. See the
+[architecture assessment and Phase A–H plan](hardware-architecture.md).
+Phase A has begun with a hardware graph, reference netlist and topology checks.
+The motor/electronics/firmware closed loop is not implemented yet.
+
+## Previous experiment-workbench direction (preserved, no longer the priority)
+
+The previous direction was a testing and debugging workbench for mobile-robot teams.
 The 29 completed checkpoints below are the simulator foundation, not a claim that
 the expanded product is nearly ready for industry use.
 
@@ -15,7 +22,8 @@ The next product phases are:
    reruns remain to be added.
 3. Real MCAP/ROS 2 recording import, topic mapping and clock/transform diagnostics.
    MCAP inventory and selected ROS 2 odometry extraction are implemented, preserving
-   header timestamps, frames and covariance. IMU/LiDAR decoding, algorithm topic
+   header timestamps, frames and covariance. IMU extraction is also implemented.
+   LiDAR decoding, algorithm topic
    mapping and transform-aware replay are still pending.
 4. Synchronized debugging timelines, events and linked comparisons.
 5. External Python algorithms, process isolation and ROS 2 adapters.

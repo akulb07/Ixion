@@ -11,7 +11,7 @@ from roboforge.simulation import Simulator
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="roboforge")
+    parser = argparse.ArgumentParser(prog="ixion")
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate", help="Validate a foundation run YAML/JSON")
     validate.add_argument("config", type=Path)
@@ -32,9 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     benchmark.add_argument("--output", type=Path, required=True)
     benchmark.add_argument("--seed", type=int, default=42)
     benchmark.add_argument("--iterations", type=int, default=500)
-    serve = subparsers.add_parser(
-        "serve", help="Start the optional local API (install roboforge[api])"
-    )
+    serve = subparsers.add_parser("serve", help="Start the optional local API (install ixion[api])")
     serve.add_argument("--output", type=Path, default=Path("results/service"))
     serve.add_argument("--port", type=int, default=8765)
     check = subparsers.add_parser("check", help="Check saved runs against an acceptance policy")
@@ -70,8 +68,54 @@ def main(argv: list[str] | None = None) -> int:
     odometry.add_argument("--topic", required=True)
     odometry.add_argument("--output", type=Path, required=True)
     odometry.add_argument("--max-samples", type=int, default=100_000)
+    imu = subparsers.add_parser("extract-imu", help="Decode a recorded ROS 2 IMU topic")
+    imu.add_argument("recording", type=Path)
+    imu.add_argument("--topic", required=True)
+    imu.add_argument("--output", type=Path, required=True)
+    imu.add_argument("--max-samples", type=int, default=100_000)
+    hardware = subparsers.add_parser(
+        "inspect-project", help="Inspect hardware topology (not engineering readiness)"
+    )
+    hardware.add_argument("project", type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.command == "inspect-project":
+            import json
+
+            from roboforge.hardware import check_project, load_project
+
+            project = load_project(args.project)
+            diagnostics = check_project(project)
+            print(
+                json.dumps(
+                    {
+                        "kind": "hardware_topology_check",
+                        "project": project.name,
+                        "components": len(project.components),
+                        "nets": len(project.nets),
+                        "engineering_readiness": "not_assessed",
+                        "diagnostics": [d.model_dump(mode="json") for d in diagnostics],
+                    },
+                    indent=2,
+                    allow_nan=False,
+                )
+            )
+            return 3 if any(d.severity == "ERROR" for d in diagnostics) else 0
+        if args.command == "extract-imu":
+            import json
+
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.recorded_imu import extract_imu
+
+            validate_output_paths([args.output], protected=[args.recording])
+            report = extract_imu(args.recording, args.topic, max_samples=args.max_samples)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(json.dumps(report, indent=2, allow_nan=False))
+            print(
+                f"Extracted {report['sample_count']} IMU samples; report: {args.output.resolve()}"
+            )
+            return 0
         if args.command == "extract-odometry":
             import json
 
@@ -164,9 +208,7 @@ def main(argv: list[str] | None = None) -> int:
 
                 from roboforge.api import create_app
             except ImportError as exc:
-                raise ValueError(
-                    'Install API dependencies with: pip install "roboforge[api]"'
-                ) from exc
+                raise ValueError('Install API dependencies with: pip install "ixion[api]"') from exc
             uvicorn.run(create_app(args.output), host="127.0.0.1", port=args.port, workers=1)
             return 0
         if args.command == "benchmark":

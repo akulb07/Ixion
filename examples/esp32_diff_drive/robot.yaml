@@ -1,0 +1,795 @@
+# Abstract topology only. Not a verified schematic or runnable hardware simulation.
+name: esp32_diff_drive_reference
+assembly:
+  total_mass_kg: 2.3
+  wheel_radius_m: 0.0325
+  track_width_m: 0.18
+  links:
+  - source: chassis
+    target: esp32
+    kind: mount
+  - source: chassis
+    target: driver
+    kind: mount
+  - source: chassis
+    target: left_motor
+    kind: mount
+  - source: chassis
+    target: left_encoder
+    kind: mount
+  - source: chassis
+    target: left_wheel
+    kind: mount
+  - source: chassis
+    target: right_motor
+    kind: mount
+  - source: chassis
+    target: right_encoder
+    kind: mount
+  - source: chassis
+    target: right_wheel
+    kind: mount
+  - source: chassis
+    target: imu
+    kind: mount
+  - source: chassis
+    target: ultrasonic
+    kind: mount
+  - source: chassis
+    target: battery
+    kind: mount
+  - source: chassis
+    target: regulator_5v
+    kind: mount
+  - source: chassis
+    target: echo_level_shifter
+    kind: mount
+  - source: chassis
+    target: caster
+    kind: mount
+  - source: left_motor
+    target: left_wheel
+    kind: shaft
+  - source: left_motor
+    target: left_encoder
+    kind: encoder_shaft
+  - source: right_motor
+    target: right_wheel
+    kind: shaft
+  - source: right_motor
+    target: right_encoder
+    kind: encoder_shaft
+components:
+- id: esp32
+  type: esp32-devkit-style
+  category: mcu
+  pins:
+  - id: VIN
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: V3V3
+    kind: power_out
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  - id: GPIO13
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO16
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO17
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO18
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO19
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO21
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    - I2C_SDA
+    required: true
+  - id: GPIO22
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    - I2C_SCL
+    required: true
+  - id: GPIO23
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO25
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO26
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO27
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO32
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO33
+    kind: bidirectional
+    capabilities:
+    - DIGITAL_IN
+    - DIGITAL_OUT
+    - PWM
+    - INTERRUPT
+    required: true
+  - id: GPIO34
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    - INTERRUPT
+    required: true
+  - id: GPIO35
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    - INTERRUPT
+    required: true
+- id: driver
+  type: tb6612fng
+  category: motor_driver
+  pins:
+  - id: VM
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: VCC
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  - id: AIN1
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: AIN2
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: PWMA
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    - PWM
+    required: true
+  - id: BIN1
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: BIN2
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: PWMB
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    - PWM
+    required: true
+  - id: STBY
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: AO1
+    kind: output
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  - id: AO2
+    kind: output
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  - id: BO1
+    kind: output
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  - id: BO2
+    kind: output
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+- id: left_motor
+  type: generic-n20-gearmotor
+  category: motor
+  pins:
+  - id: P
+    kind: passive
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  - id: N
+    kind: passive
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  parameters:
+  - name: nominal_voltage
+    value: 6.0
+    unit: V
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: output_no_load_speed
+    value: 300.0
+    unit: rpm
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: no_load_current
+    value: 0.1
+    unit: A
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: output_stall_torque
+    value: 0.25
+    unit: N*m
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: stall_current
+    value: 1.8
+    unit: A
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: gear_ratio
+    value: 100.0
+    unit: '1'
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+- id: left_encoder
+  type: quadrature
+  category: encoder
+  pins:
+  - id: VCC
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  - id: A
+    kind: output
+    capabilities:
+    - DIGITAL_OUT
+    required: true
+  - id: B
+    kind: output
+    capabilities:
+    - DIGITAL_OUT
+    required: true
+  parameters:
+  - name: cycles_per_rotor_revolution
+    value: 12.0
+    unit: count/rev
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: edge_multiplier
+    value: 4.0
+    unit: '1'
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+- id: left_wheel
+  type: wheel
+  category: wheel
+- id: right_motor
+  type: generic-n20-gearmotor
+  category: motor
+  pins:
+  - id: P
+    kind: passive
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  - id: N
+    kind: passive
+    capabilities:
+    - MOTOR_OUTPUT
+    required: true
+  parameters:
+  - name: nominal_voltage
+    value: 6.0
+    unit: V
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: output_no_load_speed
+    value: 300.0
+    unit: rpm
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: no_load_current
+    value: 0.1
+    unit: A
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: output_stall_torque
+    value: 0.25
+    unit: N*m
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: stall_current
+    value: 1.8
+    unit: A
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: gear_ratio
+    value: 100.0
+    unit: '1'
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+- id: right_encoder
+  type: quadrature
+  category: encoder
+  pins:
+  - id: VCC
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  - id: A
+    kind: output
+    capabilities:
+    - DIGITAL_OUT
+    required: true
+  - id: B
+    kind: output
+    capabilities:
+    - DIGITAL_OUT
+    required: true
+  parameters:
+  - name: cycles_per_rotor_revolution
+    value: 12.0
+    unit: count/rev
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: edge_multiplier
+    value: 4.0
+    unit: '1'
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+- id: right_wheel
+  type: wheel
+  category: wheel
+- id: imu
+  type: mpu6050-style
+  category: sensor
+  pins:
+  - id: VCC
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  - id: SDA
+    kind: bidirectional
+    capabilities:
+    - I2C_SDA
+    required: true
+  - id: SCL
+    kind: input
+    capabilities:
+    - I2C_SCL
+    required: true
+- id: ultrasonic
+  type: hc-sr04-style
+  category: sensor
+  pins:
+  - id: VCC
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  - id: TRIG
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: ECHO
+    kind: output
+    capabilities:
+    - DIGITAL_OUT
+    required: true
+- id: battery
+  type: lipo-2s
+  category: battery
+  pins:
+  - id: P
+    kind: power_out
+    capabilities:
+    - POWER
+    required: true
+  - id: N
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  parameters:
+  - name: series_cells
+    value: 2.0
+    unit: '1'
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: parallel_cells
+    value: 1.0
+    unit: '1'
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: nominal_voltage
+    value: 7.4
+    unit: V
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: capacity
+    value: 2.2
+    unit: Ah
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: internal_resistance
+    value: 0.15
+    unit: ohm
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+- id: regulator_5v
+  type: regulator-placeholder
+  category: regulator
+  pins:
+  - id: VIN
+    kind: power_in
+    capabilities:
+    - POWER
+    required: true
+  - id: VOUT
+    kind: power_out
+    capabilities:
+    - POWER
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+  parameters:
+  - name: output_voltage
+    value: 5.0
+    unit: V
+    reference: Illustrative input; replace with exact-part datasheet or measurement.
+- id: echo_level_shifter
+  type: level-interface-placeholder
+  category: interface
+  pins:
+  - id: IN
+    kind: input
+    capabilities:
+    - DIGITAL_IN
+    required: true
+  - id: OUT
+    kind: output
+    capabilities:
+    - DIGITAL_OUT
+    required: true
+  - id: GND
+    kind: ground
+    capabilities:
+    - GROUND
+    required: true
+- id: chassis
+  type: chassis
+  category: chassis
+- id: caster
+  type: caster
+  category: caster
+nets:
+- id: ground
+  endpoints:
+  - component: esp32
+    pin: GND
+  - component: driver
+    pin: GND
+  - component: left_encoder
+    pin: GND
+  - component: right_encoder
+    pin: GND
+  - component: imu
+    pin: GND
+  - component: ultrasonic
+    pin: GND
+  - component: battery
+    pin: N
+  - component: regulator_5v
+    pin: GND
+  - component: echo_level_shifter
+    pin: GND
+- id: battery_supply
+  endpoints:
+  - component: battery
+    pin: P
+  - component: driver
+    pin: VM
+  - component: regulator_5v
+    pin: VIN
+- id: rail_5v
+  endpoints:
+  - component: regulator_5v
+    pin: VOUT
+  - component: esp32
+    pin: VIN
+  - component: ultrasonic
+    pin: VCC
+- id: rail_3v3
+  endpoints:
+  - component: esp32
+    pin: V3V3
+  - component: driver
+    pin: VCC
+  - component: imu
+    pin: VCC
+  - component: left_encoder
+    pin: VCC
+  - component: right_encoder
+    pin: VCC
+- id: signal_AIN1
+  endpoints:
+  - component: esp32
+    pin: GPIO25
+  - component: driver
+    pin: AIN1
+- id: signal_AIN2
+  endpoints:
+  - component: esp32
+    pin: GPIO26
+  - component: driver
+    pin: AIN2
+- id: signal_PWMA
+  endpoints:
+  - component: esp32
+    pin: GPIO27
+  - component: driver
+    pin: PWMA
+- id: signal_BIN1
+  endpoints:
+  - component: esp32
+    pin: GPIO18
+  - component: driver
+    pin: BIN1
+- id: signal_BIN2
+  endpoints:
+  - component: esp32
+    pin: GPIO19
+  - component: driver
+    pin: BIN2
+- id: signal_PWMB
+  endpoints:
+  - component: esp32
+    pin: GPIO23
+  - component: driver
+    pin: PWMB
+- id: signal_STBY
+  endpoints:
+  - component: esp32
+    pin: GPIO13
+  - component: driver
+    pin: STBY
+- id: left_motor_p
+  endpoints:
+  - component: driver
+    pin: AO1
+  - component: left_motor
+    pin: P
+- id: left_motor_n
+  endpoints:
+  - component: driver
+    pin: AO2
+  - component: left_motor
+    pin: N
+- id: left_encoder_A
+  endpoints:
+  - component: left_encoder
+    pin: A
+  - component: esp32
+    pin: GPIO32
+- id: left_encoder_B
+  endpoints:
+  - component: left_encoder
+    pin: B
+  - component: esp32
+    pin: GPIO33
+- id: right_motor_p
+  endpoints:
+  - component: driver
+    pin: BO1
+  - component: right_motor
+    pin: P
+- id: right_motor_n
+  endpoints:
+  - component: driver
+    pin: BO2
+  - component: right_motor
+    pin: N
+- id: right_encoder_A
+  endpoints:
+  - component: right_encoder
+    pin: A
+  - component: esp32
+    pin: GPIO34
+- id: right_encoder_B
+  endpoints:
+  - component: right_encoder
+    pin: B
+  - component: esp32
+    pin: GPIO35
+- id: i2c_sda
+  endpoints:
+  - component: esp32
+    pin: GPIO21
+  - component: imu
+    pin: SDA
+- id: i2c_scl
+  endpoints:
+  - component: esp32
+    pin: GPIO22
+  - component: imu
+    pin: SCL
+- id: trigger
+  endpoints:
+  - component: esp32
+    pin: GPIO16
+  - component: ultrasonic
+    pin: TRIG
+- id: echo_high
+  endpoints:
+  - component: ultrasonic
+    pin: ECHO
+  - component: echo_level_shifter
+    pin: IN
+- id: echo_low
+  endpoints:
+  - component: echo_level_shifter
+    pin: OUT
+  - component: esp32
+    pin: GPIO17
+i2c_buses:
+- id: sensors
+  controller: esp32
+  sda_net: i2c_sda
+  scl_net: i2c_scl
+  devices:
+  - component: imu
+    address: 104
+assignments:
+- endpoint:
+    component: esp32
+    pin: GPIO25
+  function: DIGITAL_OUT
+- endpoint:
+    component: esp32
+    pin: GPIO26
+  function: DIGITAL_OUT
+- endpoint:
+    component: esp32
+    pin: GPIO27
+  function: PWM
+- endpoint:
+    component: esp32
+    pin: GPIO18
+  function: DIGITAL_OUT
+- endpoint:
+    component: esp32
+    pin: GPIO19
+  function: DIGITAL_OUT
+- endpoint:
+    component: esp32
+    pin: GPIO23
+  function: PWM
+- endpoint:
+    component: esp32
+    pin: GPIO13
+  function: DIGITAL_OUT
+- endpoint:
+    component: esp32
+    pin: GPIO16
+  function: DIGITAL_OUT
+- endpoint:
+    component: esp32
+    pin: GPIO17
+  function: DIGITAL_IN
+- endpoint:
+    component: esp32
+    pin: GPIO21
+  function: I2C_SDA
+- endpoint:
+    component: esp32
+    pin: GPIO22
+  function: I2C_SCL
+- endpoint:
+    component: esp32
+    pin: GPIO32
+  function: INTERRUPT
+- endpoint:
+    component: esp32
+    pin: GPIO33
+  function: INTERRUPT
+- endpoint:
+    component: esp32
+    pin: GPIO34
+  function: INTERRUPT
+- endpoint:
+    component: esp32
+    pin: GPIO35
+  function: INTERRUPT

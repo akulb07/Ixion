@@ -45,7 +45,7 @@ def plot_sensors(readings, path: str | Path) -> Path:
     acceleration_ax.legend()
     for axis in (encoder_ax, gyro_ax, acceleration_ax):
         axis.grid(alpha=0.2)
-    figure.suptitle("RoboForge | Seeded sensor laboratory", fontsize=16)
+    figure.suptitle("Ixion | Seeded sensor laboratory", fontsize=16)
     figure.supxlabel(
         "Actual measurement records · capture and delivery times saved separately", fontsize=9
     )
