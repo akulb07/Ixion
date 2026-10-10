@@ -83,6 +83,10 @@ The example is an abstract netlist, not a build-ready schematic.
 
 ## Implementation checkpoints
 
+The [product priorities and release gates](roadmap.md#what-would-make-this-worth-using)
+sit alongside these technical checkpoints. In particular, completing the software
+loop does not replace validation against a physical reference robot.
+
 1. **A1:** Project schema, explicit units, pins/nets, mechanical links, I2C graph,
    structural diagnostics, reference assembly and CLI inspection. Round-trip and
    bad-reference tests; keep the old simulator suite passing.
