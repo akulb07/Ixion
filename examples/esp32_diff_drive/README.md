@@ -7,8 +7,10 @@ ixion inspect-project examples/esp32_diff_drive/robot.yaml
 ```
 
 The project contains 15 component instances and 24 electrical nets, plus mechanical
-links and an I2C bus. Edit the YAML and run the check again. Removing the standby
-net produces required-pin errors. Duplicating an endpoint rejects the graph instead
+links and an I2C bus. There are 15 MCU assignments; missing verified electrical
+envelopes produce explicit warnings. Edit the YAML and run the check again.
+Removing the standby net produces required-pin and unconnected-assignment errors.
+Duplicating an endpoint rejects the graph instead
 of silently changing connectivity. JSON round-trips through the same schema.
 
 Exit codes: 0 means no errors in the implemented topology rules; 3 means design

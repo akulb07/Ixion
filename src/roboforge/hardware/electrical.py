@@ -47,6 +47,73 @@ class PinAssignmentRule:
         return tuple(diagnostics)
 
 
+class GroundReferenceRule:
+    """Compare explicitly declared local references on single-ended nets.
+
+    Ground pins on one component are not implicitly shorted. Passive terminals
+    are excluded, so motor winding terminals do not acquire a fictitious ground.
+    Isolated/differential interfaces need a different future connection model.
+    """
+
+    def evaluate(self, project: RobotProject) -> tuple[Diagnostic, ...]:
+        pins = {(c.id, p.id): p for c in project.components for p in c.pins}
+        net_for = {(e.component, e.pin): n.id for n in project.nets for e in n.endpoints}
+        diagnostics = []
+        for net in project.nets:
+            active = [
+                e
+                for e in net.endpoints
+                if pins[(e.component, e.pin)].kind not in {"ground", "passive"}
+            ]
+            if len(active) < 2:
+                continue
+            references = set()
+            unknown, disconnected = [], []
+            for endpoint in active:
+                pin = pins[(endpoint.component, endpoint.pin)]
+                label = f"{endpoint.component}.{endpoint.pin}"
+                if pin.ground_reference is None:
+                    unknown.append(label)
+                else:
+                    ground_net = net_for.get((endpoint.component, pin.ground_reference))
+                    if ground_net is None:
+                        disconnected.append(label)
+                    else:
+                        references.add(ground_net)
+            for code, severity, message, affected in (
+                (
+                    "ground_reference_unknown",
+                    "WARNING",
+                    "Some endpoints do not declare a ground reference.",
+                    unknown,
+                ),
+                (
+                    "ground_reference_unconnected",
+                    "ERROR",
+                    "A declared ground reference is not connected.",
+                    disconnected,
+                ),
+                (
+                    "ground_reference_mismatch",
+                    "ERROR",
+                    "Endpoints use different ground nets.",
+                    sorted(references) if len(references) > 1 else [],
+                ),
+            ):
+                if affected:
+                    diagnostics.append(
+                        Diagnostic(
+                            severity=severity,
+                            code=code,
+                            title="Ground reference check",
+                            message=f"{net.id}: {message}",
+                            context=(net.id, *affected),
+                            suggestion="Check the declared single-ended reference wiring. Do not join intentionally isolated domains without an interface model.",
+                        )
+                    )
+        return tuple(diagnostics)
+
+
 class ElectricalRule:
     """Compare a single explicit source against every declared receiver on a net.
 
@@ -67,8 +134,14 @@ class ElectricalRule:
                 continue
             if len(sources) != 1:
                 if not sources and any(kinds[key] == "input" for key in sinks):
-                    diagnostics.append(self._diagnostic(net.id, "signal_drive_unresolved", "WARNING",
-                        "No explicit signal driver is resolved; open-drain buses and unassigned GPIOs need separate analysis."))
+                    diagnostics.append(
+                        self._diagnostic(
+                            net.id,
+                            "signal_drive_unresolved",
+                            "WARNING",
+                            "No explicit signal driver is resolved; open-drain buses and unassigned GPIOs need separate analysis.",
+                        )
+                    )
                 if not sources and any(kinds[key] == "power_in" for key in sinks):
                     diagnostics.append(
                         self._diagnostic(

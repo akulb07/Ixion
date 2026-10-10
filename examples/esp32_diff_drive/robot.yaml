@@ -1,4 +1,4 @@
-# Abstract topology only. Not a verified schematic or runnable hardware simulation.
+# Abstract reference netlist; component ratings still need verification.
 name: esp32_diff_drive_reference
 assembly:
   total_mass_kg: 2.3
@@ -69,11 +69,13 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: V3V3
     kind: power_out
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -87,6 +89,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO16
     kind: bidirectional
     capabilities:
@@ -95,6 +98,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO17
     kind: bidirectional
     capabilities:
@@ -103,6 +107,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO18
     kind: bidirectional
     capabilities:
@@ -111,6 +116,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO19
     kind: bidirectional
     capabilities:
@@ -119,6 +125,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO21
     kind: bidirectional
     capabilities:
@@ -128,6 +135,7 @@ components:
     - INTERRUPT
     - I2C_SDA
     required: true
+    ground_reference: GND
   - id: GPIO22
     kind: bidirectional
     capabilities:
@@ -137,6 +145,7 @@ components:
     - INTERRUPT
     - I2C_SCL
     required: true
+    ground_reference: GND
   - id: GPIO23
     kind: bidirectional
     capabilities:
@@ -145,6 +154,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO25
     kind: bidirectional
     capabilities:
@@ -153,6 +163,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO26
     kind: bidirectional
     capabilities:
@@ -161,6 +172,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO27
     kind: bidirectional
     capabilities:
@@ -169,6 +181,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO32
     kind: bidirectional
     capabilities:
@@ -177,6 +190,7 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO33
     kind: bidirectional
     capabilities:
@@ -185,18 +199,21 @@ components:
     - PWM
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO34
     kind: input
     capabilities:
     - DIGITAL_IN
     - INTERRUPT
     required: true
+    ground_reference: GND
   - id: GPIO35
     kind: input
     capabilities:
     - DIGITAL_IN
     - INTERRUPT
     required: true
+    ground_reference: GND
 - id: driver
   type: tb6612fng
   category: motor_driver
@@ -206,11 +223,13 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: VCC
     kind: power_in
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -221,58 +240,69 @@ components:
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: AIN2
     kind: input
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: PWMA
     kind: input
     capabilities:
     - DIGITAL_IN
     - PWM
     required: true
+    ground_reference: GND
   - id: BIN1
     kind: input
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: BIN2
     kind: input
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: PWMB
     kind: input
     capabilities:
     - DIGITAL_IN
     - PWM
     required: true
+    ground_reference: GND
   - id: STBY
     kind: input
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: AO1
     kind: output
     capabilities:
     - MOTOR_OUTPUT
     required: true
+    ground_reference: GND
   - id: AO2
     kind: output
     capabilities:
     - MOTOR_OUTPUT
     required: true
+    ground_reference: GND
   - id: BO1
     kind: output
     capabilities:
     - MOTOR_OUTPUT
     required: true
+    ground_reference: GND
   - id: BO2
     kind: output
     capabilities:
     - MOTOR_OUTPUT
     required: true
+    ground_reference: GND
 - id: left_motor
   type: generic-n20-gearmotor
   category: motor
@@ -321,6 +351,7 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -331,11 +362,13 @@ components:
     capabilities:
     - DIGITAL_OUT
     required: true
+    ground_reference: GND
   - id: B
     kind: output
     capabilities:
     - DIGITAL_OUT
     required: true
+    ground_reference: GND
   parameters:
   - name: cycles_per_rotor_revolution
     value: 12.0
@@ -396,6 +429,7 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -406,11 +440,13 @@ components:
     capabilities:
     - DIGITAL_OUT
     required: true
+    ground_reference: GND
   - id: B
     kind: output
     capabilities:
     - DIGITAL_OUT
     required: true
+    ground_reference: GND
   parameters:
   - name: cycles_per_rotor_revolution
     value: 12.0
@@ -432,6 +468,7 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -442,11 +479,13 @@ components:
     capabilities:
     - I2C_SDA
     required: true
+    ground_reference: GND
   - id: SCL
     kind: input
     capabilities:
     - I2C_SCL
     required: true
+    ground_reference: GND
 - id: ultrasonic
   type: hc-sr04-style
   category: sensor
@@ -456,6 +495,7 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -466,11 +506,13 @@ components:
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: ECHO
     kind: output
     capabilities:
     - DIGITAL_OUT
     required: true
+    ground_reference: GND
 - id: battery
   type: lipo-2s
   category: battery
@@ -480,6 +522,7 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: N
   - id: N
     kind: ground
     capabilities:
@@ -515,11 +558,13 @@ components:
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: VOUT
     kind: power_out
     capabilities:
     - POWER
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:
@@ -539,11 +584,13 @@ components:
     capabilities:
     - DIGITAL_IN
     required: true
+    ground_reference: GND
   - id: OUT
     kind: output
     capabilities:
     - DIGITAL_OUT
     required: true
+    ground_reference: GND
   - id: GND
     kind: ground
     capabilities:

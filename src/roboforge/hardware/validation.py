@@ -128,10 +128,12 @@ def check_project(
     project: RobotProject, rules: tuple[ValidationRule, ...] | None = None
 ) -> tuple[Diagnostic, ...]:
     """Run graph rules and explicitly report unassessed engineering domains."""
-    from .electrical import ElectricalRule, PinAssignmentRule
+    from .electrical import ElectricalRule, GroundReferenceRule, PinAssignmentRule
 
     active = (
-        (WiringRule(), I2CRule(), PinAssignmentRule(), ElectricalRule()) if rules is None else rules
+        (WiringRule(), I2CRule(), PinAssignmentRule(), GroundReferenceRule(), ElectricalRule())
+        if rules is None
+        else rules
     )
     return tuple(d for rule in active for d in rule.evaluate(project)) + (
         Diagnostic(

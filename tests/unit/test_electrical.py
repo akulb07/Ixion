@@ -1,6 +1,9 @@
+import json
+
 import pytest
 from pydantic import ValidationError
 
+from roboforge.cli import main
 from roboforge.hardware import RobotProject, check_project
 from roboforge.hardware.project import LogicLevels, VoltageRange
 
@@ -14,7 +17,7 @@ def levels(low, high):
 
 
 def project_data(digital=False):
-    return dict(
+    raw = dict(
         name="electrical_test",
         assembly=dict(total_mass_kg=1, wheel_radius_m=0.03, track_width_m=0.2),
         components=[
@@ -57,6 +60,13 @@ def project_data(digital=False):
         if digital
         else [],
     )
+    for component in raw["components"]:
+        component["pins"][0]["ground_reference"] = "GND"
+        component["pins"].append(dict(id="GND", kind="ground", capabilities=["GROUND"]))
+    raw["nets"].append(
+        dict(id="ground", endpoints=[dict(component=c["id"], pin="GND") for c in raw["components"]])
+    )
+    return raw
 
 
 def codes(raw):
@@ -133,3 +143,62 @@ def test_invalid_voltage_data_rejected(low, high):
 def test_overlapping_logic_thresholds_rejected():
     with pytest.raises(ValidationError):
         LogicLevels.model_validate(levels(2, 2))
+
+
+def test_guarantees_cannot_exceed_their_own_voltage_envelope():
+    raw = project_data(True)
+    raw["components"][0]["pins"][0]["output_levels"] = levels(0.4, 5)
+    with pytest.raises(ValidationError, match="inside their declared voltage envelope"):
+        RobotProject.model_validate(raw)
+
+
+def test_cli_reports_voltage_failure_and_retains_unknown_readiness(tmp_path, capsys):
+    raw = project_data()
+    raw["components"][0]["pins"][0]["driven_voltage"] = voltage(6, 10)
+    path = tmp_path / "voltage.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    assert main(["inspect-project", str(path)]) == 3
+    report = json.loads(capsys.readouterr().out)
+    assert report["engineering_readiness"] == "not_assessed"
+    problem = next(d for d in report["diagnostics"] if d["code"] == "voltage_range_mismatch")
+    assert problem["context"] == ["wire", "source.OUT", "sink.IN"]
+
+
+def test_unassigned_signal_direction_stays_unknown():
+    raw = project_data(True)
+    raw["assignments"] = []
+    assert "signal_drive_unresolved" in codes(raw)
+
+
+def test_disconnected_ground_reference_is_an_error():
+    raw = project_data()
+    raw["nets"].pop()
+    assert "ground_reference_unconnected" in codes(raw)
+
+
+def test_unknown_ground_is_not_inferred_from_component_ground_pin():
+    raw = project_data()
+    del raw["components"][0]["pins"][0]["ground_reference"]
+    assert "ground_reference_unknown" in codes(raw)
+
+
+def test_separate_ground_domains_are_not_implicitly_shorted():
+    raw = project_data(True)
+    raw["nets"].pop()
+    for component in raw["components"]:
+        component["pins"].append(dict(id="RETURN", kind="ground", capabilities=["GROUND"]))
+        raw["nets"].append(
+            dict(
+                id=component["id"] + "_ground",
+                endpoints=[dict(component=component["id"], pin=p) for p in ("GND", "RETURN")],
+            )
+        )
+    assert "ground_reference_mismatch" in codes(raw)
+
+
+@pytest.mark.parametrize("reference", ["MISSING", "OUT"])
+def test_ground_reference_must_name_a_real_ground_pin(reference):
+    raw = project_data()
+    raw["components"][0]["pins"][0]["ground_reference"] = reference
+    with pytest.raises(ValidationError, match="local ground pin"):
+        RobotProject.model_validate(raw)

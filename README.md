@@ -1,14 +1,19 @@
 # Ixion
 
-Ixion is becoming an open virtual-prototyping platform for robots: test a robot
-before buying its parts. The goal is to connect real component models, run firmware
-against simulated electronics, and inspect the resulting motion, sensors and power.
+This started because we broke a robot and wanted to test the next version before
+spending more money on parts. Simulating movement was useful, but it didn't tell
+us whether the motors, driver and battery would actually work together.
 
-The existing 2D simulator and experiment workspace work today. Hardware prototyping
-is in Phase A: a component graph and topology checker, not yet a firmware-driven
-hardware simulation. See the [architecture assessment and implementation plan](docs/hardware-architecture.md).
+That's what I'm trying to build with Ixion: pick the parts, connect them, run the
+code and see how the robot behaves before building it for real.
 
-Previously named RoboForge. Install this checkout with `python -m pip install -e .`
+It's still a work in progress. The 2D simulator and experiment workspace work.
+The hardware side can describe components and check some wiring and electrical
+constraints, but it can't run the full firmware-to-motor loop yet. The
+[plan and architecture notes](docs/hardware-architecture.md) explain where this is going.
+
+This used to be called RoboForge, so that name still shows up in the Python code.
+Install this checkout with `python -m pip install -e .`
 to get the `ixion` command. The `roboforge` command, Python imports and existing
 run formats remain compatible. The repository URL has not changed.
 
@@ -17,8 +22,9 @@ ixion inspect-project examples/esp32_diff_drive/robot.yaml
 ```
 
 This checks references, required connections, source conflicts and I2C topology.
-It explicitly reports engineering readiness as unassessed. The example component
-values are assumptions, not purchasing recommendations.
+It also checks [declared electrical limits and MCU assignments](docs/electrical-checks.md).
+The example still has missing part ratings, so expect warnings. Its numbers are
+starting assumptions, not a tested shopping list.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
@@ -44,7 +50,7 @@ Python 3.12+. From this folder:
 python -m venv .venv
 # Windows: .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev,plot]"
-roboforge validate configs/foundation.yaml
+ixion validate configs/foundation.yaml
 python -m pytest
 ```
 
@@ -52,7 +58,7 @@ For the browser workspace, install the optional extra and start the local server
 
 ```sh
 python -m pip install -e ".[api]"
-roboforge serve --output results/service
+ixion serve --output results/service
 ```
 
 Open [http://127.0.0.1:8765/](http://127.0.0.1:8765/). The page is in the wheel,
@@ -83,10 +89,10 @@ notes live beside newer ones in `docs/`; they are kept for the checkpoint histor
 ## Runs
 
 ```sh
-roboforge simulate configs/sensors.yaml --output results/sensors --plot
-roboforge experiment experiment.yaml --output results/runs
-roboforge replay results/runs/<experiment-id>/<trial-id> --time 1.25
-roboforge benchmark --output results/benchmarks --seed 42 --iterations 500
+ixion simulate configs/sensors.yaml --output results/sensors --plot
+ixion experiment experiment.yaml --output results/runs
+ixion replay results/runs/<experiment-id>/<trial-id> --time 1.25
+ixion benchmark --output results/benchmarks --seed 42 --iterations 500
 ```
 
 Runs keep their configs, measurements and exports. Replay reads the saved result

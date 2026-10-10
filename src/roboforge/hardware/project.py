@@ -86,6 +86,7 @@ class Pin(Schema):
     kind: Literal["power_in", "power_out", "ground", "input", "output", "bidirectional", "passive"]
     capabilities: tuple[Capability, ...] = Field(min_length=1)
     required: bool = False
+    ground_reference: Identifier | None = None
     accepted_voltage: VoltageRange | None = None
     driven_voltage: VoltageRange | None = None
     input_levels: LogicLevels | None = None
@@ -101,8 +102,12 @@ class Pin(Schema):
             (self.input_levels, self.accepted_voltage),
             (self.output_levels, self.driven_voltage),
         ):
-            if levels is not None and envelope is not None and not (
-                envelope.minimum_v <= levels.low_max_v < levels.high_min_v <= envelope.maximum_v
+            if (
+                levels is not None
+                and envelope is not None
+                and not (
+                    envelope.minimum_v <= levels.low_max_v < levels.high_min_v <= envelope.maximum_v
+                )
             ):
                 raise ValueError("logic levels must lie inside their declared voltage envelope")
         return self
@@ -137,6 +142,14 @@ class Component(Schema):
     def unique_fields(self):
         _unique([p.id for p in self.pins], "pin ID")
         _unique([p.name for p in self.parameters], "parameter name")
+        pins = {p.id: p for p in self.pins}
+        for pin in self.pins:
+            if pin.ground_reference is not None:
+                reference = pins.get(pin.ground_reference)
+                if reference is None or reference.kind != "ground" or pin.kind == "ground":
+                    raise ValueError(
+                        "ground_reference must name a local ground pin on a non-ground pin"
+                    )
         return self
 
 

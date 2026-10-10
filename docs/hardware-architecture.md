@@ -89,6 +89,10 @@ The example is an abstract netlist, not a build-ready schematic.
 2. **A2:** Verified part definitions and electrical rules: supply/ground paths,
    pin mode assignments, voltage ranges, logic levels and bus pull-ups. Add a
    minimal backend protocol together with a headless consumer.
+   Declared voltage-envelope, digital-level and MCU-assignment checks are now
+   implemented ([usage and limits](electrical-checks.md)), together with explicit
+   ground-reference connectivity checks. Verified part ratings, ground impedance,
+   source activation and pull-up analysis remain pending.
 3. **B:** DC motor equations, driver truth table/loss model, battery sag/capacity,
    wheel torque coupling and quadrature events. Analytical zero/free/stall/reverse
    tests plus current/power accounting before claiming useful estimates.
