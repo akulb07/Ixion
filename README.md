@@ -40,7 +40,16 @@ for voltage sag and charge use too:
 ixion battery-step examples/esp32_diff_drive/robot.yaml --component battery --current 2 --seconds 60
 ```
 
-The motor, battery, driver and physics still need to be connected into one loop.
+The first [motor-driver model](docs/motor-driver.md) connects driver commands to
+the motor estimate. Try `python examples/esp32_diff_drive/driver_check.py` to
+compare driving, braking and coasting. A [shared battery/motor estimate](docs/powertrain.md)
+now accounts for both motors loading the same supply:
+
+```sh
+python examples/esp32_diff_drive/power_check.py
+```
+
+Robot motion and time integration are still needed before this becomes a complete loop.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See

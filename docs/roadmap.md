@@ -4,7 +4,8 @@ The priority is now virtual hardware prototyping. See the
 [architecture assessment and Phase A–H plan](hardware-architecture.md).
 Phase A has begun with a hardware graph, reference netlist and topology checks.
 Declared electrical-limit and ground-reference checks work, and the first motor
-and battery estimates run separately.
+and battery estimates now have a shared-supply operating-point solver through
+the first TB6612 channel model. Time integration and robot motion remain pending.
 The motor/electronics/firmware closed loop is not implemented yet.
 
 ## What would make this worth using

@@ -1,7 +1,8 @@
 # Battery model
 
 The battery model estimates voltage sag and charge use for a constant discharge
-current. It does not yet connect to the motor or driver automatically.
+current. The separate [powertrain solver](powertrain.md) now calculates the coupled
+motor/driver load at a fixed SOC and prescribed shaft speeds.
 
 ```sh
 ixion battery-step examples/esp32_diff_drive/robot.yaml --component battery --current 2 --seconds 60 --soc 1

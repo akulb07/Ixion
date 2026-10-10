@@ -103,8 +103,11 @@ loop does not replace validation against a physical reference robot.
    The first [quasi-static DC gearmotor model](motor-model.md) and `motor-point`
    CLI are implemented, along with a separate [discharge-only battery model](battery-model.md)
    for OCV, sag, charge consumption and current diagnostics. Inertia integration,
-   the driver model and coupled physics remain pending; shaft speed and battery
-   load current are still prescribed inputs.
+   and coupled physics remain pending. A first [TB6612 channel model](motor-driver.md)
+   now drives the motor estimate with PWM, brake and high-impedance modes. A
+   [shared-supply solver](powertrain.md) couples battery sag to one or two channels.
+   A bounded fixed-step discharge trace now advances SOC and recomputes electrical
+   loads. Shaft speed remains prescribed; mechanical integration is still pending.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
 5. **D:** Host firmware runtime with simulation-time scheduling and serial output.
