@@ -33,8 +33,14 @@ voltage and shaft speed and look at the estimated current, torque and losses:
 ixion motor-point examples/esp32_diff_drive/robot.yaml --component left_motor --voltage 6 --rpm 150
 ```
 
-It doesn't move the robot yet. The driver, battery and physics still need to be
-connected to it.
+It doesn't move the robot yet. There's now a separate [battery model](docs/battery-model.md)
+for voltage sag and charge use too:
+
+```sh
+ixion battery-step examples/esp32_diff_drive/robot.yaml --component battery --current 2 --seconds 60
+```
+
+The motor, battery, driver and physics still need to be connected into one loop.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See

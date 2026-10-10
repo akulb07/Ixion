@@ -97,8 +97,10 @@ The example is an abstract netlist, not a build-ready schematic.
    wheel torque coupling and quadrature events. Analytical zero/free/stall/reverse
    tests plus current/power accounting before claiming useful estimates.
    The first [quasi-static DC gearmotor model](motor-model.md) and `motor-point`
-   CLI are implemented. Inertia integration, driver/battery models and physics
-   coupling remain pending; prescribed shaft speed is still an input.
+   CLI are implemented, along with a separate [discharge-only battery model](battery-model.md)
+   for OCV, sag, charge consumption and current diagnostics. Inertia integration,
+   the driver model and coupled physics remain pending; shaft speed and battery
+   load current are still prescribed inputs.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
 5. **D:** Host firmware runtime with simulation-time scheduling and serial output.

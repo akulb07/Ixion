@@ -85,8 +85,49 @@ def main(argv: list[str] | None = None) -> int:
     motor.add_argument(
         "--load-torque", type=float, default=0, help="Signed opposing output torque in N m"
     )
+    battery = subparsers.add_parser(
+        "battery-step", help="Estimate constant-current battery discharge"
+    )
+    battery.add_argument("project", type=Path)
+    battery.add_argument("--component", required=True)
+    battery.add_argument("--current", type=float, required=True)
+    battery.add_argument("--seconds", type=float, required=True)
+    battery.add_argument("--soc", type=float, default=1)
     args = parser.parse_args(argv)
     try:
+        if args.command == "battery-step":
+            import json
+
+            from roboforge.hardware import load_project
+            from roboforge.hardware.battery import BatteryModel, BatteryState
+
+            project = load_project(args.project)
+            component = next((c for c in project.components if c.id == args.component), None)
+            if component is None:
+                raise ValueError("battery component not found in project")
+            model = BatteryModel.from_component(component)
+            result = model.discharge(BatteryState(soc=args.soc), args.current, args.seconds)
+            print(
+                json.dumps(
+                    {
+                        "kind": "battery_discharge_step",
+                        "result_type": "estimate",
+                        "component": component.id,
+                        "model": model.model_dump(mode="json"),
+                        "inputs": [p.model_dump(mode="json") for p in component.parameters],
+                        "result": result.model_dump(mode="json"),
+                        "limitations": [
+                            "Two-point linear OCV approximation using explicit pack inputs.",
+                            "Charge-limited runtime excludes cutoff voltage, temperature, aging and changing load.",
+                            "Current ratings produce warnings, not protection or burst-duration enforcement.",
+                            "No charging, BMS, motor/driver coupling or cell imbalance model.",
+                        ],
+                    },
+                    indent=2,
+                    allow_nan=False,
+                )
+            )
+            return 0
         if args.command == "motor-point":
             import json
             import math

@@ -549,6 +549,18 @@ components:
     value: 0.15
     unit: ohm
     reference: Illustrative input; replace with exact-part datasheet or measurement.
+  - name: empty_ocv
+    value: 6.0
+    unit: V
+    evidence: assumed
+    reference: Illustrative pack-level OCV endpoint; linear curve is not a measured
+      LiPo discharge curve.
+  - name: full_ocv
+    value: 8.4
+    unit: V
+    evidence: assumed
+    reference: Illustrative pack-level OCV endpoint; linear curve is not a measured
+      LiPo discharge curve.
 - id: regulator_5v
   type: regulator-placeholder
   category: regulator
