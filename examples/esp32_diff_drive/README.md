@@ -18,7 +18,9 @@ diagnostics contain errors; 2 means invalid input. A warning always identifies t
 unimplemented engineering checks. Zero is not approval to purchase or wire hardware.
 
 This is a netlist fixture, not the closed-loop demo yet. There is no firmware,
-register interface, motor physics or backend attached. The generic motor values
+register interface or physics backend attached. The `motor-point` command can
+evaluate the motor parameters at a prescribed speed, but does not run the robot.
+The generic motor values
 are assumed. Regulator and echo interface entries are placeholders requiring real
 part selection. I2C pull-ups and board-specific wiring have not been validated.
 

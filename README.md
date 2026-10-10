@@ -26,6 +26,16 @@ It also checks [declared electrical limits and MCU assignments](docs/electrical-
 The example still has missing part ratings, so expect warnings. Its numbers are
 starting assumptions, not a tested shopping list.
 
+There's also a first [DC motor model](docs/motor-model.md). You can give it a
+voltage and shaft speed and look at the estimated current, torque and losses:
+
+```sh
+ixion motor-point examples/esp32_diff_drive/robot.yaml --component left_motor --voltage 6 --rpm 150
+```
+
+It doesn't move the robot yet. The driver, battery and physics still need to be
+connected to it.
+
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
 [the release roadmap](docs/roadmap.md) for the historical simulator checkpoints

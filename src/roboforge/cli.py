@@ -77,8 +77,50 @@ def main(argv: list[str] | None = None) -> int:
         "inspect-project", help="Inspect hardware topology (not engineering readiness)"
     )
     hardware.add_argument("project", type=Path)
+    motor = subparsers.add_parser("motor-point", help="Estimate a DC gearmotor operating point")
+    motor.add_argument("project", type=Path)
+    motor.add_argument("--component", required=True)
+    motor.add_argument("--voltage", type=float, required=True)
+    motor.add_argument("--rpm", type=float, required=True, help="Signed gearbox output RPM")
+    motor.add_argument(
+        "--load-torque", type=float, default=0, help="Signed opposing output torque in N m"
+    )
     args = parser.parse_args(argv)
     try:
+        if args.command == "motor-point":
+            import json
+            import math
+
+            from roboforge.hardware import load_project
+            from roboforge.hardware.motor import MotorDatasheet
+
+            project = load_project(args.project)
+            component = next((c for c in project.components if c.id == args.component), None)
+            if component is None:
+                raise ValueError("motor component not found in project")
+            model = MotorDatasheet.from_component(component).derive()
+            point = model.operating_point(args.voltage, args.rpm * math.tau / 60, args.load_torque)
+            print(
+                json.dumps(
+                    {
+                        "kind": "motor_operating_point",
+                        "result_type": "estimate",
+                        "component": component.id,
+                        "model": model.model_dump(mode="json"),
+                        "inputs": [p.model_dump(mode="json") for p in component.parameters],
+                        "point": point.model_dump(mode="json"),
+                        "limitations": [
+                            "Prescribed speed, not a dynamic robot simulation.",
+                            "No inductance, thermal model, current limiting or battery/driver coupling.",
+                            "Zero volts means shorted terminals, not coasting.",
+                            "Signed regenerative power does not establish that a driver or battery can accept it.",
+                        ],
+                    },
+                    indent=2,
+                    allow_nan=False,
+                )
+            )
+            return 0
         if args.command == "inspect-project":
             import json
 

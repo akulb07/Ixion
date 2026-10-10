@@ -96,6 +96,9 @@ The example is an abstract netlist, not a build-ready schematic.
 3. **B:** DC motor equations, driver truth table/loss model, battery sag/capacity,
    wheel torque coupling and quadrature events. Analytical zero/free/stall/reverse
    tests plus current/power accounting before claiming useful estimates.
+   The first [quasi-static DC gearmotor model](motor-model.md) and `motor-point`
+   CLI are implemented. Inertia integration, driver/battery models and physics
+   coupling remain pending; prescribed shaft speed is still an input.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
 5. **D:** Host firmware runtime with simulation-time scheduling and serial output.
