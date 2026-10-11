@@ -67,6 +67,10 @@ It connects both motors to the rover mass and estimates distance and speed on
 level ground. Traction, weight distribution and rotating inertia are assumptions
 you can change. Turning, wheel slip and the firmware loop still need work.
 
+Add `--encoder-cycles 20` to get ideal A/B encoder pulses for each wheel as well.
+That assumes 20 cycles per wheel revolution; the [encoder notes](docs/quadrature.md)
+explain the count convention and what is still missing before firmware can read them.
+
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
 [the release roadmap](docs/roadmap.md) for the historical simulator checkpoints

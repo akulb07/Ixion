@@ -9,6 +9,8 @@ the first TB6612 channel model. Shared battery discharge and independent shaft
 acceleration now run over simulation time. A straight-line rolling bench connects
 motor torque to vehicle mass with a traction validity check. Turning, wheel slip
 and general chassis dynamics remain pending.
+Ideal encoder A/B edge traces can now be generated from shaft rotation. GPIO
+event delivery and the firmware loop remain pending.
 The motor/electronics/firmware closed loop is not implemented yet.
 
 ## What would make this worth using
