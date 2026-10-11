@@ -95,4 +95,6 @@ check reverse symmetry, braking, shared sag and charge accounting.
 
 This is a lumped-inertia approximation using the existing steady electrical and
 gearbox models. It does not resolve inductance, switching or gearbox compliance.
-Robot translation, wheel contact, traction and hardware sensors are still ahead.
+The separate [straight-line rolling bench](rolling-model.md) connects this
+integrator to vehicle mass and a traction validity check. General wheel contact,
+turning and hardware sensors are still ahead.

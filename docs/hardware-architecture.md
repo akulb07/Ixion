@@ -108,7 +108,9 @@ loop does not replace validation against a physical reference robot.
    A bounded fixed-step discharge trace now advances SOC and recomputes electrical
    loads. An independent shaft bench now integrates speed and angular displacement
    from motor torque, explicit inertia and signed load torque while advancing battery
-   charge. Wheel contact, chassis dynamics and quadrature signals remain pending.
+   charge. A [straight-line rolling bench](rolling-model.md) adds vehicle mass and
+   rejects excessive contact-force demand. Turning, slip dynamics, general chassis
+   dynamics and quadrature signals remain pending; Phase B is still partial.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
 5. **D:** Host firmware runtime with simulation-time scheduling and serial output.

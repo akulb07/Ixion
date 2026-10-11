@@ -6,7 +6,9 @@ Phase A has begun with a hardware graph, reference netlist and topology checks.
 Declared electrical-limit and ground-reference checks work, and the first motor
 and battery estimates now have a shared-supply operating-point solver through
 the first TB6612 channel model. Shared battery discharge and independent shaft
-acceleration now run over simulation time. Wheel contact and robot motion remain pending.
+acceleration now run over simulation time. A straight-line rolling bench connects
+motor torque to vehicle mass with a traction validity check. Turning, wheel slip
+and general chassis dynamics remain pending.
 The motor/electronics/firmware closed loop is not implemented yet.
 
 ## What would make this worth using

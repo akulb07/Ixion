@@ -57,7 +57,15 @@ python examples/esp32_diff_drive/shaft_check.py --seconds 1 --step 0.01
 
 It lets the motors speed up while current and battery charge change. The inertia
 is an assumption you can change with `--inertia`; it isn't a moving rover yet.
-Wheel contact, chassis motion and the firmware loop still need work.
+There's a [straight-line rover bench](docs/rolling-model.md) too:
+
+```sh
+python examples/esp32_diff_drive/rolling_check.py --seconds 1 --step 0.001
+```
+
+It connects both motors to the rover mass and estimates distance and speed on
+level ground. Traction, weight distribution and rotating inertia are assumptions
+you can change. Turning, wheel slip and the firmware loop still need work.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
