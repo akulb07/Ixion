@@ -49,7 +49,15 @@ now accounts for both motors loading the same supply:
 python examples/esp32_diff_drive/power_check.py
 ```
 
-Robot motion and time integration are still needed before this becomes a complete loop.
+There's also a small rotating-shaft bench now:
+
+```sh
+python examples/esp32_diff_drive/shaft_check.py --seconds 1 --step 0.01
+```
+
+It lets the motors speed up while current and battery charge change. The inertia
+is an assumption you can change with `--inertia`; it isn't a moving rover yet.
+Wheel contact, chassis motion and the firmware loop still need work.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
