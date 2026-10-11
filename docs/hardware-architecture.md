@@ -121,10 +121,18 @@ loop does not replace validation against a physical reference robot.
    Phase B is still partial.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
+   Ideal [ultrasonic timing](ultrasonic-model.md) now converts supplied distances to
+   echo pulses, with short-trigger, cycle and timeout handling. Digital pulse capture
+   works on a simulation clock. Acoustic geometry and sensor voltage interfaces remain pending.
 5. **D:** Host firmware runtime with simulation-time scheduling and serial output.
    No claim of ESP32 binary compatibility.
+   A bounded digital event clock now supports callbacks and pulse capture. The
+   shaft runner supports slower control ticks and count-based speed observations;
+   a complete shared firmware scheduler and serial/bus support remain pending.
 6. **E:** Headless obstacle-response demo: firmware changes PWM after observing an
    echo, with encoder and power telemetry and repeatable integration tests.
+   A scripted target fixture now triggers shaft braking through measured echo width.
+   This does not complete the moving-rover obstacle-response requirement.
 7. **F/G:** Engineering design estimates, readiness categories, component swaps,
    CLI templates and portable reports with explicit assumptions.
 8. **H:** Extend the existing dark IDE workspace after the loop is validated.

@@ -104,6 +104,9 @@ def main(argv: list[str] | None = None) -> int:
     feedback.add_argument("--target-count", type=int, required=True)
     feedback.add_argument("--seconds", type=float, default=2)
     feedback.add_argument("--step", type=float, default=0.005)
+    feedback.add_argument(
+        "--control-every", type=int, default=1, help="Run controller every N physics steps"
+    )
     feedback.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
@@ -125,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
                     target_count=args.target_count,
                     duration_s=args.seconds,
                     step_s=args.step,
+                    control_every_steps=args.control_every,
                 ),
             )
             payload = json.dumps(result, indent=2, allow_nan=False)

@@ -92,6 +92,13 @@ ixion encoder-feedback examples/esp32_diff_drive/robot.yaml --inertia 0.01 --tar
 The [feedback command notes](docs/feedback-command.md) explain the saved report,
 count units and limits. Use a fresh output filename for each run.
 
+`--control-every 10` lets you see what happens when the controller checks less
+often. Reports include response delay, estimated speed and energy use.
+
+The [ultrasonic examples](docs/ultrasonic-model.md) now turn known target distances
+into echo pulses, measure them through a simulation clock, and brake a shaft when
+a scripted target gets close. The full moving-rover version still needs work.
+
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
 [the release roadmap](docs/roadmap.md) for the historical simulator checkpoints

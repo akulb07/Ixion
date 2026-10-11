@@ -28,6 +28,7 @@ class FeedbackConfig(Schema):
     target_count: int = Field(strict=True, gt=0)
     duration_s: Positive = 2
     step_s: Positive = 0.005
+    control_every_steps: int = Field(strict=True, ge=1, le=10_000, default=1)
 
 
 def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
@@ -61,16 +62,55 @@ def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
     phases = [(False, False), (True, False), (True, True), (False, True)]
     observed, previous, events = 0, 0, 0
     brake_time = None
+    target_time = None
+    brake_angle = None
+    previous_control_count = 0
+    previous_control_time = 0.0
+    counts_per_rad = finite(
+        4 * mounted.quadrature.cycles_per_revolution * mounted.angle_ratio / math.tau,
+        "encoder counts per output radian",
+    )
+    energy_j = 0.0
+    peak_current = 0.0
+    decisions = []
     samples = []
     for index in range(count_steps):
-        if observed >= config.target_count and brake_time is None:
-            brake_time = runtime.time_s
-            outputs.write(digital={pins[f"{channel}IN2"]: True})
+        if index % config.control_every_steps == 0:
+            control_elapsed = runtime.time_s - previous_control_time
+            measured_speed = (
+                None
+                if control_elapsed == 0
+                else finite(
+                    (observed - previous_control_count) / counts_per_rad / control_elapsed,
+                    "encoder speed estimate",
+                )
+            )
+            if observed >= config.target_count and brake_time is None:
+                brake_time = runtime.time_s
+                outputs.write(digital={pins[f"{channel}IN2"]: True})
+            decisions.append(
+                {
+                    "time_s": runtime.time_s,
+                    "encoder_count": observed,
+                    "estimated_speed_rad_s": measured_speed,
+                    "command": "drive" if brake_time is None else "brake",
+                }
+            )
+            previous_control_count, previous_control_time = observed, runtime.time_s
         end = min(config.duration_s, (index + 1) * config.step_s)
         elapsed = end - runtime.time_s
         if elapsed <= 0:
             break
         result = runtime.step(elapsed, (connection.motor_inputs(outputs.inputs(channel)),))
+        if brake_time is not None and brake_angle is None:
+            brake_angle = result.start.displacement_rad[0]
+        energy_j = finite(
+            energy_j + result.start.point.battery.power_w * elapsed, "terminal energy"
+        )
+        peak_current = max(
+            peak_current, result.start.point.battery.current_a, result.end.point.battery.current_a
+        )
+        interval_start_count = observed
         encoder = mounted.quadrature.trace(
             (
                 AngularSample(
@@ -93,7 +133,7 @@ def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
         input_pins = {signal: pin for pin, (_, signal) in gpio.pin_map.items()}
 
         def decode(event):
-            nonlocal observed, previous
+            nonlocal observed, previous, target_time
             phase = phases.index(
                 (gpio.digital_read(input_pins["a"]), gpio.digital_read(input_pins["b"]))
             )
@@ -102,6 +142,8 @@ def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
                 raise ValueError("invalid quadrature transition")
             observed += 1 if delta == 1 else -1
             previous = phase
+            if observed >= config.target_count and target_time is None:
+                target_time = result.start.time_s + event.time_s
 
         for pin in input_pins.values():
             gpio.attach_interrupt(pin, decode)
@@ -110,6 +152,10 @@ def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
             {
                 "time_s": result.end.time_s,
                 "encoder_count": observed,
+                "estimated_speed_rad_s": finite(
+                    (observed - interval_start_count) / counts_per_rad / elapsed,
+                    "interval encoder speed",
+                ),
                 "driver_mode": result.end.point.channels[0].mode,
                 "speed_rad_s": result.end.speed_rad_s[0],
                 "angle_rad": result.end.displacement_rad[0],
@@ -118,7 +164,7 @@ def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
             }
         )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "result_type": "estimate",
         "limitations": [
             "Independent shaft with assumed inertia; no chassis contact",
@@ -133,11 +179,24 @@ def run_encoder_feedback(project: RobotProject, config: FeedbackConfig) -> dict:
         "status": (
             "brake_triggered"
             if brake_time is not None
-            else "target_reached_at_end"
+            else "target_reached_brake_pending"
             if observed >= config.target_count
             else "target_not_reached"
         ),
         "brake_command_time_s": brake_time,
+        "control_decisions": decisions,
+        "metrics": {
+            "target_crossing_time_s": target_time,
+            "controller_response_delay_s": None if brake_time is None else brake_time - target_time,
+            "encoder_counts_per_output_revolution": counts_per_rad * math.tau,
+            "final_count_error": observed - config.target_count,
+            "rotation_after_brake_rad": None
+            if brake_angle is None
+            else samples[-1]["angle_rad"] - brake_angle,
+            "final_speed_rad_s": samples[-1]["speed_rad_s"],
+            "terminal_energy_j": energy_j,
+            "peak_sampled_pack_current_a": peak_current,
+        },
         "motor_connection": connection.model_dump(),
         "mounted_encoder": mounted.model_dump(),
         "output_pin_map": outputs.pin_map,

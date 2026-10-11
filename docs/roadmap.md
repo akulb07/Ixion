@@ -20,6 +20,10 @@ execution of the whole electronics graph remain pending.
 Three further checkpoints are complete: rotor encoder mounting/resolution lookup,
 a reusable wired shaft feedback runner, and an `encoder-feedback` CLI with saved
 reports. These extend the partial hardware phases; they do not complete Phases B–E.
+Controller cadence and count-based speed/response/energy metrics are implemented.
+An ideal ultrasonic timing model and bounded digital signal clock now support a
+scripted echo-triggered shaft brake fixture. Sensor voltage interfaces, scene-based
+ranging and the complete rover loop are still pending.
 
 ## What would make this worth using
 

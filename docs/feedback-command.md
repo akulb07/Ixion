@@ -40,8 +40,8 @@ the controller's writes too. Reversing motor leads still reverses motion and may
 prevent the positive target from being reached. The original `encoder_brake.py`
 example remains useful for testing firmware that uses fixed pin names.
 
-Status is `brake_triggered`, `target_not_reached`, or `target_reached_at_end` when
-the target arrives too late for a following control interval. CLI exit codes are
+Status is `brake_triggered`, `target_not_reached`, or `target_reached_brake_pending`
+when no controller tick remains after the target arrives. CLI exit codes are
 0 for a triggered brake, 3 for a completed experiment without that trigger, and 2
 for invalid inputs or runtime/file errors. Exit 0 does not mean the shaft stopped.
 
@@ -50,3 +50,22 @@ power-net activation, CPU instructions, interrupt latency or compiled firmware.
 Logic supply remains an explicit 3.3 V assumption. Check smaller steps for numerical
 convergence. The earlier `--encoder-cycles 20` example uses an override assumption;
 this command uses the actual resolution declared in the project instead.
+
+## Controller rate and measurements
+
+`--control-every 10` runs the controller every ten physics steps while encoder
+edges keep arriving each step. With `--step 0.005`, that means a 50 ms control
+period. The initial decision occurs at time zero; there is no extra decision
+after the run ends. This models controller sampling, not CPU execution time.
+
+Version 2 reports add `control_decisions` and `metrics`. Decisions record the count
+and count-derived average speed available at each tick. Initial speed is unknown
+and reported as null. Per-step speed estimates are also recorded alongside true
+model speed; count quantization can make short-window estimates noisy.
+
+Metrics include the first interpolated target-crossing time, delay before the
+brake command, final count error, rotation after braking, final speed, sampled peak
+pack current and integrated terminal energy. Energy uses interval-start power,
+matching explicit Euler charge integration. It excludes unmodeled electronics
+loads and is not a measured battery energy result. A peak is limited by sampling;
+it is not a switching transient or a validated hardware maximum.
