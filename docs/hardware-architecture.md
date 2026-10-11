@@ -112,7 +112,13 @@ loop does not replace validation against a physical reference robot.
    rejects excessive contact-force demand. Turning, slip dynamics, general chassis
    dynamics remain pending. Ideal quadrature edge traces now come from sampled
    shaft angles, with explicit resolution and interpolated event times. Runtime
-   GPIO delivery remains pending; Phase B is still partial.
+   GPIO replay now delivers those edges to logical pin reads and callbacks.
+   Direct encoder wiring now maps to MCU input pins with assignment checks.
+   Incremental shaft steps now accept changing commands; a host Python example
+   brakes from decoded encoder counts through project-wired MCU reads and TB6612
+   digital/PWM control outputs. Motor P/N nets now resolve channel and lead polarity.
+   Full rover control remains pending;
+   Phase B is still partial.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
 5. **D:** Host firmware runtime with simulation-time scheduling and serial output.

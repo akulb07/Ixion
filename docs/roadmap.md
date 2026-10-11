@@ -9,9 +9,17 @@ the first TB6612 channel model. Shared battery discharge and independent shaft
 acceleration now run over simulation time. A straight-line rolling bench connects
 motor torque to vehicle mass with a traction validity check. Turning, wheel slip
 and general chassis dynamics remain pending.
-Ideal encoder A/B edge traces can now be generated from shaft rotation. GPIO
-event delivery and the firmware loop remain pending.
-The motor/electronics/firmware closed loop is not implemented yet.
+Ideal encoder A/B edges now replay through logical GPIO inputs and callbacks in
+simulation time. Direct encoder nets now resolve to MCU input pins, with reads and
+interrupt callbacks checked against pin assignments. An incremental shaft runtime
+now accepts changing commands, with a host Python encoder-triggered brake example.
+The example now reads project-wired MCU inputs and writes digital/PWM outputs
+through direct TB6612 control nets. Motor output nets now determine the connected
+driver channel and lead polarity. A complete rover firmware loop and automatic
+execution of the whole electronics graph remain pending.
+Three further checkpoints are complete: rotor encoder mounting/resolution lookup,
+a reusable wired shaft feedback runner, and an `encoder-feedback` CLI with saved
+reports. These extend the partial hardware phases; they do not complete Phases B–E.
 
 ## What would make this worth using
 

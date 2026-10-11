@@ -93,8 +93,47 @@ def main(argv: list[str] | None = None) -> int:
     battery.add_argument("--current", type=float, required=True)
     battery.add_argument("--seconds", type=float, required=True)
     battery.add_argument("--soc", type=float, default=1)
+    feedback = subparsers.add_parser(
+        "encoder-feedback", help="Run a project-wired shaft braking experiment"
+    )
+    feedback.add_argument("project", type=Path)
+    feedback.add_argument("--motor", default="left_motor")
+    feedback.add_argument("--battery", default="battery")
+    feedback.add_argument("--mcu", default="esp32")
+    feedback.add_argument("--inertia", type=float, required=True)
+    feedback.add_argument("--target-count", type=int, required=True)
+    feedback.add_argument("--seconds", type=float, default=2)
+    feedback.add_argument("--step", type=float, default=0.005)
+    feedback.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "encoder-feedback":
+            import json
+
+            from roboforge.hardware import load_project
+            from roboforge.hardware.feedback import FeedbackConfig, run_encoder_feedback
+
+            if args.output.exists():
+                raise ValueError("feedback output already exists; choose a new path")
+            result = run_encoder_feedback(
+                load_project(args.project),
+                FeedbackConfig(
+                    motor=args.motor,
+                    battery=args.battery,
+                    mcu=args.mcu,
+                    inertia_kg_m2=args.inertia,
+                    target_count=args.target_count,
+                    duration_s=args.seconds,
+                    step_s=args.step,
+                ),
+            )
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            print(
+                f"{result['status']}: {result['samples'][-1]['encoder_count']} counts; saved to {args.output}"
+            )
+            return 0 if result["status"] == "brake_triggered" else 3
         if args.command == "battery-step":
             import json
 

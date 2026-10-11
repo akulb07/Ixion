@@ -69,7 +69,28 @@ you can change. Turning, wheel slip and the firmware loop still need work.
 
 Add `--encoder-cycles 20` to get ideal A/B encoder pulses for each wheel as well.
 That assumes 20 cycles per wheel revolution; the [encoder notes](docs/quadrature.md)
-explain the count convention and what is still missing before firmware can read them.
+explain the count convention. The example also counts those pulses through logical
+GPIO callbacks using the MCU pins in the wiring, so the output includes counts
+read from the A/B signals and the resolved pin map. A live
+rover firmware control loop is still ahead. There is now a small
+[encoder-controlled shaft braking example](docs/shaft-runtime.md):
+
+```sh
+python examples/esp32_diff_drive/encoder_brake.py
+```
+
+It runs a Python controller that brakes after reading enough encoder pulses,
+using the project's MCU input pins and digital/PWM wiring to the driver.
+This is an independent motor bench, with assumed inertia and ideal signals.
+
+For a reusable version that reads encoder mounting and resolution from the project:
+
+```sh
+ixion encoder-feedback examples/esp32_diff_drive/robot.yaml --inertia 0.01 --target-count 2400 --output feedback.json
+```
+
+The [feedback command notes](docs/feedback-command.md) explain the saved report,
+count units and limits. Use a fresh output filename for each run.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See
