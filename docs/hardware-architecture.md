@@ -132,6 +132,8 @@ loop does not replace validation against a physical reference robot.
 6. **E:** Headless obstacle-response demo: firmware changes PWM after observing an
    echo, with encoder and power telemetry and repeatable integration tests.
    A scripted target fixture now triggers shaft braking through measured echo width.
+   Its reusable runner records missing echoes and can brake on timeout; target
+   schedules and controller policies are explicit inputs.
    This does not complete the moving-rover obstacle-response requirement.
 7. **F/G:** Engineering design estimates, readiness categories, component swaps,
    CLI templates and portable reports with explicit assumptions.

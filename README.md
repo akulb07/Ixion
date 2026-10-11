@@ -98,6 +98,8 @@ often. Reports include response delay, estimated speed and energy use.
 The [ultrasonic examples](docs/ultrasonic-model.md) now turn known target distances
 into echo pulses, measure them through a simulation clock, and brake a shaft when
 a scripted target gets close. The full moving-rover version still needs work.
+The reusable ultrasonic runner can also compare braking on a missing echo with
+continuing after a timeout, and records which condition caused braking.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See

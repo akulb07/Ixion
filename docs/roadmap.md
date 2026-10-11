@@ -24,6 +24,8 @@ Controller cadence and count-based speed/response/energy metrics are implemented
 An ideal ultrasonic timing model and bounded digital signal clock now support a
 scripted echo-triggered shaft brake fixture. Sensor voltage interfaces, scene-based
 ranging and the complete rover loop are still pending.
+The ultrasonic shaft fixture is now a reusable runner with configurable target
+schedules, explicit missing-echo behavior and selectable timeout braking policy.
 
 ## What would make this worth using
 

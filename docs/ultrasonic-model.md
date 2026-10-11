@@ -53,3 +53,30 @@ project's motor-driver GPIO output adapter but an ideal logical echo pin. The
 reference's 5 V sensor, echo interface and MCU input net are not yet executing as
 an electrical circuit. This is an obstacle-response shaft fixture, not the complete
 Phase E rover demo or compiled firmware support.
+
+## Reusable feedback experiment
+
+The example now calls `run_ultrasonic_feedback(project, config)` from
+`roboforge.hardware.ultrasonic_feedback`. `UltrasonicFeedbackConfig` includes the
+motor/battery/MCU selection, assumed shaft inertia, sensor settings, control step,
+poll interval, distance threshold and an ordered `TargetDistance` schedule. The
+schedule starts at time zero; each value holds until the next entry. A distance of
+`None` explicitly means no target response. The input is fixture data, not a scene.
+
+`timeout_action="brake"` is the default controller policy. It latches braking when
+the echo deadline expires without a complete pulse. `timeout_action="continue"`
+records the timeout and continues driving, allowing comparison of controller
+policies. Neither policy represents built-in HC-SR04 behavior. No missing reading
+is replaced with zero distance or the last valid distance.
+
+The full target schedule and project are saved in the returned report, together
+with actual echo/timeout readings, detection time, brake-command time and reason.
+The reason is `obstacle` or `echo_timeout`. Status is `brake_triggered`,
+`brake_pending` if no following control interval remains, or
+`completed_without_brake`. A trigger does not mean the shaft has stopped.
+
+Runs are limited to 10,000 physics steps and 128 target changes. Poll intervals
+must cover both the sensor's minimum cycle and timeout window. Sensor events are
+processed before checking the deadline, so a completed echo wins over a timeout
+at the same instant. Once selected, the first brake reason remains latched.
+Driver pins are discovered from project wiring, including for the right motor.
