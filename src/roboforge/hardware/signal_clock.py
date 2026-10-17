@@ -45,6 +45,20 @@ class SignalClock:
             raise ValueError("callback must be callable")
         self._callbacks[pin].append(callback)
 
+    def call_at(self, time_s: float, callback: Callable[[], None]) -> None:
+        """Schedule a peripheral callback on the same ordered timeline as GPIO.
+
+        Callbacks may queue more work, but cannot recursively advance the clock.
+        GPIO edges and callbacks share the 200,000-event lifetime budget.
+        """
+        time = nonnegative(time_s, "callback time")
+        if self._failed or time < self._time or not callable(callback):
+            raise ValueError("callback needs a callable, a non-past time and a working clock")
+        if self._sequence >= 200_000:
+            raise ValueError("signal clock exceeds 200,000-event lifetime budget")
+        heapq.heappush(self._events, (time, self._sequence, callback))
+        self._sequence += 1
+
     def schedule(self, events: tuple[SignalEdge, ...]) -> None:
         if self._failed:
             raise ValueError("cannot schedule on failed signal clock")
@@ -70,8 +84,11 @@ class SignalClock:
         self._running = True
         try:
             while self._events and self._events[0][0] <= end:
-                _, _, event = heapq.heappop(self._events)
-                self._time = event.time_s
+                event_time, _, event = heapq.heappop(self._events)
+                self._time = event_time
+                if not isinstance(event, SignalEdge):
+                    event()
+                    continue
                 old = self._levels[event.pin]
                 self._levels[event.pin] = event.level
                 if old != event.level:

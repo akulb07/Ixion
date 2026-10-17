@@ -22,10 +22,74 @@ a reusable wired shaft feedback runner, and an `encoder-feedback` CLI with saved
 reports. These extend the partial hardware phases; they do not complete Phases B–E.
 Controller cadence and count-based speed/response/energy metrics are implemented.
 An ideal ultrasonic timing model and bounded digital signal clock now support a
-scripted echo-triggered shaft brake fixture. Sensor voltage interfaces, scene-based
-ranging and the complete rover loop are still pending.
+scripted echo-triggered shaft brake fixture. Sensor voltage interfaces, general
+scene-based ranging and a complete hardware runtime are still pending.
 The ultrasonic shaft fixture is now a reusable runner with configurable target
 schedules, explicit missing-echo behavior and selectable timeout braking policy.
+The `ultrasonic-feedback` command now loads bounded YAML/JSON scenarios and saves
+reports, with supplied obstacle and missing-echo cases and explicit outcome codes.
+A further partial Phase E checkpoint now connects two equal motors, battery sag,
+straight-line rover motion, project-wired encoder signals and ideal ultrasonic
+feedback in a [fixed-wall braking fixture](rover-brake.md). The `rover-brake`
+command saves telemetry and distinguishes a speed-threshold stop before the wall
+from first contact or an unfinished response. The supplied early/late thresholds
+make a useful comparison. Sonar trigger/echo signals now follow the reference
+MCU nets through an explicitly selected ideal logical interface, and reports save
+the actual GPIO edges. Pin assignments and supported paths are checked before
+execution. Analog voltage conversion, arbitrary scenes, a general firmware
+scheduler and physical validation remain pending. This does not complete Phase E
+or the reference hardware release.
+
+The first [MPU6050/I2C fixture](imu-i2c.md) now supports identity, wake/sleep/reset,
+range selection and coherent motion-register reads from supplied physical inputs.
+It resolves the declared bus pins and address, tracks sequential transfer timing,
+and rejects unsupported registers and overlapping requests. This is a partial
+Phase C checkpoint. The combined rover scenario now publishes its body
+acceleration into the IMU at physics endpoints and delivers I2C responses on the
+same timeline as encoder and sonar GPIO. Pending transfers remain pending at run
+end, and nonblocking polls count busy skips. This adds a bounded reference
+coordinator for partial Phases D/E. A bounded [logical serial console](serial-console.md)
+now records controller and sensor events with request/transmit/completion times.
+Nonblocking whole-write rejection exposes buffer drops without delaying motion;
+unfinished output remains pending at run end. Internal sensor sampling/filtering,
+physical UART/USB behavior, serial input and a general user-firmware scheduler
+remain pending.
+
+The rover now has a [host controller interface](rover-firmware.md) for replacing
+the brake policy from Python. A separate encoder-count example runs against the
+same motion and sensor loop. Range observations and decoded counts are immutable,
+the first brake request latches, and output changes wait for a control tick.
+Sonar timeouts now arrive on the shared clock at their exact deadlines. This is
+another partial Phase D/E checkpoint. Equal forward PWM requests now support
+variable motor power before a latched brake; arbitrary firmware, CPU scheduling
+and steering remain pending.
+
+The controller interface now also supports optional IMU callbacks at I2C completion.
+The [acceleration-limit example](rover-firmware.md#using-the-imu-in-a-controller)
+uses decoded forward specific force, rejects stale frames and keeps sonar fallback.
+Pending reads stay pending at run end. This extends the partial Phase D/E work;
+it doesn't add CPU timing or hardware-binary execution.
+
+Controller callbacks can now return bounded debug messages alongside a brake
+request. These use the shared serial queue, with callback timestamps, severity,
+text and accepted/rejected counts. The IMU example can log its own decisions with
+`--log-decisions`. Full or disabled consoles don't suppress braking. This adds
+controller-authored output to the partial Phase D runtime; serial input and a
+general scheduler are still pending.
+
+A [ramped-start controller](rover-firmware.md#changing-motor-power) now changes
+both motor PWM outputs on control ticks. The first command establishes initial
+current and traction, and braking cancels pending duty updates. Reports preserve
+applied duty, request time and pending requests. The discharge-only power model
+still rejects reductions that require regeneration; restart, reverse and turning
+remain outside this fixture.
+
+A [reference encoder speed loop](encoder-speed.md) now regulates equal forward
+PWM from delivered count-window estimates. Its PI/feedforward settings, bounds,
+rate limit and anti-windup are explicit configuration. The demo records target,
+measured speed and power requests, and retains sonar braking. This is further
+partial Phase D/E work; physical tuning, broader mechanics, fault handling and
+general firmware scheduling remain ahead.
 
 ## What would make this worth using
 

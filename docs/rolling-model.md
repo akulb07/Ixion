@@ -42,4 +42,17 @@ separate wheel-slip dynamics would violate the assumed rolling constraint.
 This model covers equal-wheel straight travel on level ground. It does not model
 turning, wheel slip, caster drag, rolling resistance, slopes, load transfer,
 collisions or suspension. Current warnings remain estimates, not protection
-actions. Firmware and hardware sensor signals are still separate roadmap work.
+actions.
+
+## Changing commands during a run
+
+`RollingRuntime` wraps the same bench with incremental steps. Each step holds its
+two equal commands constant, then retains wheel angles, distance, speed and battery
+charge for the next step. A rejected step leaves that runtime state unchanged.
+It requires identical motor channels and speeds, with two equal commands; it is
+not a differential-drive turning model.
+
+The [rover wall-brake fixture](rover-brake.md) uses this runtime to connect echo
+feedback to changing driver commands and moving-body telemetry. Its explicit
+front boundary ends the run at first wall contact. That boundary is a geometric
+fixture; it adds no impact or contact-force response to this rolling model.

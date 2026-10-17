@@ -8,8 +8,10 @@ That's what I'm trying to build with Ixion: pick the parts, connect them, run th
 code and see how the robot behaves before building it for real.
 
 It's still a work in progress. The 2D simulator and experiment workspace work.
-The hardware side can describe components and check some wiring and electrical
-constraints, but it can't run the full firmware-to-motor loop yet. The
+The hardware side can check some wiring and electrical constraints, and a small
+host Python controller can now brake a moving rover from simulated echo pulses.
+It's a straight-line fixture with assumed parts and geometry; the rest of the
+hardware workflow is still being built. The
 [plan and architecture notes](docs/hardware-architecture.md) explain where this is going.
 
 This used to be called RoboForge, so that name still shows up in the Python code.
@@ -33,7 +35,7 @@ voltage and shaft speed and look at the estimated current, torque and losses:
 ixion motor-point examples/esp32_diff_drive/robot.yaml --component left_motor --voltage 6 --rpm 150
 ```
 
-It doesn't move the robot yet. There's now a separate [battery model](docs/battery-model.md)
+That command checks one operating point. There's a separate [battery model](docs/battery-model.md)
 for voltage sag and charge use too:
 
 ```sh
@@ -65,14 +67,13 @@ python examples/esp32_diff_drive/rolling_check.py --seconds 1 --step 0.001
 
 It connects both motors to the rover mass and estimates distance and speed on
 level ground. Traction, weight distribution and rotating inertia are assumptions
-you can change. Turning, wheel slip and the firmware loop still need work.
+you can change. Turning and wheel slip still need work.
 
 Add `--encoder-cycles 20` to get ideal A/B encoder pulses for each wheel as well.
 That assumes 20 cycles per wheel revolution; the [encoder notes](docs/quadrature.md)
 explain the count convention. The example also counts those pulses through logical
 GPIO callbacks using the MCU pins in the wiring, so the output includes counts
-read from the A/B signals and the resolved pin map. A live
-rover firmware control loop is still ahead. There is now a small
+read from the A/B signals and the resolved pin map. There is also a small
 [encoder-controlled shaft braking example](docs/shaft-runtime.md):
 
 ```sh
@@ -97,9 +98,99 @@ often. Reports include response delay, estimated speed and energy use.
 
 The [ultrasonic examples](docs/ultrasonic-model.md) now turn known target distances
 into echo pulses, measure them through a simulation clock, and brake a shaft when
-a scripted target gets close. The full moving-rover version still needs work.
+a scripted target gets close.
 The reusable ultrasonic runner can also compare braking on a missing echo with
 continuing after a timeout, and records which condition caused braking.
+
+You can now run these from a scenario file:
+
+```sh
+ixion ultrasonic-feedback examples/esp32_diff_drive/robot.yaml examples/esp32_diff_drive/missing_echo.yaml --output missing-echo-report.json
+```
+
+There's also an `obstacle.yaml` scenario in the same folder. Edit a copy to try
+different target distances or timeout policies; the report keeps the run inputs.
+
+The new [rover wall-brake fixture](docs/rover-brake.md) connects both motors, rover
+travel, encoder signals and echo feedback in one run:
+
+```sh
+ixion rover-brake examples/esp32_diff_drive/robot.yaml examples/esp32_diff_drive/rover_wall.yaml --output rover-report.json
+```
+
+It drives toward a fixed wall and tries to brake before the rover's front reaches
+it. Try `rover_late_brake.yaml` to see a threshold that leaves too little room.
+The report keeps distance, speed, clearance, encoder counts and power estimates.
+It now sends trigger pulses and reads echoes through the project's MCU pins.
+The selected echo interface is an ideal logical model; ESP32 binaries, analog
+sensor interfaces and real-world validation are still ahead.
+
+You can also [swap the rover controller](docs/rover-firmware.md) from Python.
+There's an example that brakes from encoder counts instead of the wall distance:
+
+```sh
+python examples/esp32_diff_drive/rover_encoder_firmware.py --target-count 6000 --output encoder-rover.json
+```
+
+It uses the same moving rover and sensors. There's also a controller that ramps
+both motors from reduced power before letting sonar request braking:
+
+```sh
+python examples/esp32_diff_drive/rover_pwm_firmware.py --initial-duty 0.25 --output pwm-rover.json
+```
+
+The first command now determines the initial current and traction estimate too.
+Only equal forward PWM and a latched brake are supported; steering, reversing
+and a general firmware runtime are still ahead.
+
+There's now a first [encoder speed controller](docs/encoder-speed.md) too:
+
+```sh
+python examples/esp32_diff_drive/rover_speed_firmware.py --target-speed 0.2 --output speed-rover.json
+```
+
+It estimates wheel speed from the encoder counts and adjusts PWM toward a ramped
+target. Sonar still handles braking. The saved report includes target versus
+measured speed and power requests. The gains are example settings, not tuned
+values for a real rover.
+
+There's a first [I2C IMU fixture](docs/imu-i2c.md) now too:
+
+```sh
+python examples/esp32_diff_drive/imu_check.py
+```
+
+It wakes the MPU6050 model through the project's bus, then reads acceleration,
+rotation and temperature bytes from known inputs. It records the bus timing and
+decoded values. This checks a small register subset. To read the IMU while the
+rover moves and brakes, use the combined scenario:
+
+```sh
+ixion rover-brake examples/esp32_diff_drive/robot.yaml examples/esp32_diff_drive/rover_wall_imu.yaml --output rover-imu-report.json
+```
+
+Its IMU readings now come from rover acceleration, with gravity included in the
+assumed aligned sensor frame. I2C responses, encoder edges and sonar share a
+timeline. The report keeps when a sample was captured and when the read arrived.
+
+Controller code can now react to those completed IMU readings too:
+
+```sh
+python examples/esp32_diff_drive/rover_imu_firmware.py --max-acceleration 2 --output imu-controller.json
+```
+
+This example brakes when forward acceleration reaches the chosen limit and
+ignores stale readings. Sonar still handles the wall and missing echoes as a
+fallback. The limit is just an example setting; the parts and sensor model still
+need checking against a real rover.
+
+For [debug messages on the same timeline](docs/serial-console.md), try
+`rover_wall_debug.yaml` instead. It records controller, sonar and selected IMU
+messages with their simulated transmit times. A slow or full console can drop
+messages without holding up the rover; unfinished output stays marked as pending.
+Add `--log-decisions` to the IMU controller example to log its own explanations
+too. These messages share the same console queue and keep the callback time, so
+you can see the decision separately from the later motor command.
 
 **Version: 0.29.0.** Experiments and planner benchmarks now export standalone HTML
 reports and trial CSV files. Browser sweeps have the same downloads. See

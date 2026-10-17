@@ -1,11 +1,13 @@
 """Brake a shaft from measured echo width in a scripted target-distance fixture."""
 
 import math
+from pathlib import Path
 from typing import Literal
 
+import yaml
 from pydantic import Field, model_validator
 
-from roboforge.config import Nonnegative, Positive, Schema
+from roboforge.config import Nonnegative, Positive, Schema, _UniqueKeyLoader
 from roboforge.core import finite
 from roboforge.hardware.battery import BatteryModel, BatteryState
 from roboforge.hardware.board_outputs import TB6612BoardOutputs
@@ -49,6 +51,20 @@ class UltrasonicFeedbackConfig(Schema):
         ):
             raise ValueError("poll period must cover sensor cycle and timeout")
         return self
+
+
+def load_ultrasonic_scenario(path: str | Path) -> UltrasonicFeedbackConfig:
+    path = Path(path)
+    try:
+        with path.open("rb") as stream:
+            content = stream.read(65537)
+        if len(content) > 65536:
+            raise ValueError("scenario exceeds 64 KiB")
+        return UltrasonicFeedbackConfig.model_validate(
+            yaml.load(content.decode("utf-8"), Loader=_UniqueKeyLoader)
+        )
+    except (OSError, ValueError, yaml.YAMLError, RecursionError) as exc:
+        raise ValueError(f"Invalid ultrasonic scenario {path}: {exc}") from exc
 
 
 def run_ultrasonic_feedback(project: RobotProject, config: UltrasonicFeedbackConfig) -> dict:

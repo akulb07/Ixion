@@ -141,6 +141,6 @@ def check_project(
             code="engineering_checks_pending",
             title="Engineering checks not implemented",
             message="Declared electrical limits are checked where provided; supply activation, current, thermal, bus timing, firmware and mechanical readiness remain unassessed.",
-            suggestion="Verify part variants and electrical ratings; hardware simulation is not available yet.",
+            suggestion="Verify exact part variants and electrical ratings; use hardware estimates only within their documented model limits.",
         ),
     )

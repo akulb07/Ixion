@@ -108,8 +108,56 @@ def main(argv: list[str] | None = None) -> int:
         "--control-every", type=int, default=1, help="Run controller every N physics steps"
     )
     feedback.add_argument("--output", type=Path, required=True)
+    ultrasonic = subparsers.add_parser(
+        "ultrasonic-feedback", help="Run a scripted ultrasonic shaft experiment"
+    )
+    ultrasonic.add_argument("project", type=Path)
+    ultrasonic.add_argument("scenario", type=Path)
+    ultrasonic.add_argument("--output", type=Path, required=True)
+    rover = subparsers.add_parser(
+        "rover-brake", help="Estimate a moving rover's wall approach and braking"
+    )
+    rover.add_argument("project", type=Path)
+    rover.add_argument("scenario", type=Path)
+    rover.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "rover-brake":
+            import json
+
+            from roboforge.hardware import load_project
+            from roboforge.hardware.rover_brake import load_rover_scenario, run_rover_brake
+
+            if args.output.exists():
+                raise ValueError("rover output already exists; choose a new path")
+            result = run_rover_brake(load_project(args.project), load_rover_scenario(args.scenario))
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            print(
+                f"{result['status']}: clearance={result['metrics']['final_front_clearance_m']:.4g} m; "
+                f"saved to {args.output}"
+            )
+            return 0 if result["status"] == "stopped_before_wall" else 3
+        if args.command == "ultrasonic-feedback":
+            import json
+
+            from roboforge.hardware import load_project
+            from roboforge.hardware.ultrasonic_feedback import (
+                load_ultrasonic_scenario,
+                run_ultrasonic_feedback,
+            )
+
+            if args.output.exists():
+                raise ValueError("feedback output already exists; choose a new path")
+            result = run_ultrasonic_feedback(
+                load_project(args.project), load_ultrasonic_scenario(args.scenario)
+            )
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            print(f"{result['status']}: reason={result['brake_reason']}; saved to {args.output}")
+            return 0 if result["status"] == "brake_triggered" else 3
         if args.command == "encoder-feedback":
             import json
 

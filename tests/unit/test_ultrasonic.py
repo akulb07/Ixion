@@ -46,3 +46,33 @@ def test_invalid_window_and_nonfinite_distance_rejected():
     with pytest.raises(ValueError):
         device.trigger(0, 10e-6, float("nan"))
     assert device.trigger(0, 10e-6, 1).status == "echo"
+
+
+def test_exact_minimum_cycle_accepts_integer_tick_rounding_but_rejects_early_polls():
+    device = sensor()
+    for tick in range(30):
+        assert device.trigger(tick * 60 * 0.001, 10e-6, 1).status == "echo"
+    with pytest.raises(ValueError, match="busy"):
+        device.trigger(30 * 60 * 0.001 - 1e-9, 10e-6, 1)
+    assert device.trigger(30 * 60 * 0.001, 10e-6, 1).status == "echo"
+
+
+@pytest.mark.parametrize("time", [0, 0.1234, 2])
+def test_maximum_range_echo_does_not_round_past_its_validated_timeout(time):
+    distance = 0.92
+    config = UltrasonicConfig(
+        response_delay_s=0.0002,
+        maximum_distance_m=distance,
+        timeout_s=0.0002 + 2 * distance / 340,
+    )
+    pulse = UltrasonicSensor(config).trigger(time, 10e-6, distance)
+    assert pulse.status == "echo"
+    assert pulse.echo_rise_s < pulse.echo_fall_s <= pulse.timeout_time_s
+    assert pulse.echo_fall_s == pytest.approx(pulse.timeout_time_s, abs=1e-15)
+
+
+def test_materially_short_timeout_is_not_hidden_by_timestamp_rounding_tolerance():
+    # model_copy bypasses validation; a bad internal caller must still fail.
+    config = sensor().config.model_copy(update={"timeout_s": 0.001})
+    with pytest.raises(ValueError, match="beyond configured timeout"):
+        UltrasonicSensor(config).trigger(0, 10e-6, 1)

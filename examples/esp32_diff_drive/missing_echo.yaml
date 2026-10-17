@@ -1,0 +1,13 @@
+# A missing response after 0.2 s triggers the chosen timeout-brake policy.
+inertia_kg_m2: 0.01
+sensor:
+  response_delay_s: 0.0002
+duration_s: 1
+step_s: 0.001
+poll_every_steps: 61
+timeout_action: brake
+targets:
+  - time_s: 0
+    distance_m: 0.5
+  - time_s: 0.2
+    distance_m: null

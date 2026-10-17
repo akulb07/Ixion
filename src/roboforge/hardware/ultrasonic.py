@@ -1,5 +1,6 @@
 """Ideal HC-SR04 trigger/echo timing for an explicitly supplied target distance."""
 
+import math
 from typing import Literal
 
 from pydantic import model_validator
@@ -56,15 +57,19 @@ class UltrasonicSensor:
         distance = None if distance_m is None else nonnegative(distance_m, "target distance")
         if time < self._last_time:
             raise ValueError("ultrasonic trigger time cannot move backwards")
-        if time < self._next_trigger:
+        # Integer control ticks and repeated addition can differ by a few ulps
+        # at an otherwise identical cycle boundary. Materially early polls fail.
+        rounding = 4 * max(math.ulp(time), math.ulp(self._next_trigger))
+        if self._next_trigger - time > rounding:
             raise ValueError("ultrasonic measurement busy or minimum cycle not elapsed")
-        if width < self.config.minimum_trigger_s:
+        end = finite(time + width, "trigger end")
+        width_rounding = 4 * max(math.ulp(time), math.ulp(end))
+        if width == 0 or self.config.minimum_trigger_s - width > width_rounding:
             result = EchoMeasurement(
                 status="short_trigger", trigger_time_s=time, trigger_width_s=width
             )
             self._last_time = time
             return result
-        end = finite(time + width, "trigger end")
         timeout = finite(end + self.config.timeout_s, "echo timeout")
         rise = fall = None
         status = "no_echo"
@@ -74,6 +79,13 @@ class UltrasonicSensor:
         ):
             rise = finite(end + self.config.response_delay_s, "echo rise")
             fall = finite(rise + 2 * distance / self.config.sound_speed_m_s, "echo fall")
+            if fall > timeout:
+                # The validated maximum-range window includes this echo. Adding
+                # delay and flight separately can put its end a few ulps late.
+                rounding = 4 * max(math.ulp(fall), math.ulp(timeout))
+                if fall - timeout > rounding:
+                    raise ValueError("echo falls beyond configured timeout")
+                fall = timeout
             if fall <= rise:
                 raise ValueError("echo pulse is below timestamp precision")
             status = "echo"

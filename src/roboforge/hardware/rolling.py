@@ -35,6 +35,40 @@ class RollingTrace(Schema):
     max_step_s: Positive
 
 
+def rolling_inertia(body: RollingBody) -> float:
+    # Per wheel: torque = J*alpha + force*r; 2*force = mass*r*alpha.
+    return positive(
+        body.rotating_inertia_per_wheel_kg_m2 + body.total_mass_kg * body.wheel_radius_m**2 / 2,
+        "effective rolling inertia",
+    )
+
+
+def rolling_sample(body: RollingBody, sample: ShaftSample) -> RollingSample:
+    limit = finite(
+        body.friction_coefficient
+        * body.total_mass_kg
+        * body.gravity_m_s2
+        * body.driven_weight_fraction
+        / 2,
+        "traction limit",
+    )
+    acceleration = finite(body.wheel_radius_m * sample.acceleration_rad_s2[0], "body acceleration")
+    force = finite(body.total_mass_kg * acceleration / 2, "wheel contact force")
+    if abs(force) > limit:
+        raise ValueError(
+            f"traction exceeded at {sample.time_s:g} s: requires {abs(force):g} N "
+            f"per wheel, limit {limit:g} N; wheel slip is not modeled"
+        )
+    return RollingSample(
+        shaft=sample,
+        distance_m=finite(body.wheel_radius_m * sample.displacement_rad[0], "body distance"),
+        speed_m_s=finite(body.wheel_radius_m * sample.speed_rad_s[0], "body speed"),
+        acceleration_m_s2=acceleration,
+        contact_force_per_wheel_n=force,
+        traction_limit_per_wheel_n=limit,
+    )
+
+
 def run_rolling_bench(
     system: Powertrain,
     state: BatteryState,
@@ -52,48 +86,18 @@ def run_rolling_bench(
     """
     if len(system.channels) != 2 or system.channels[0] != system.channels[1]:
         raise ValueError("straight-line bench requires two identical motor channels and speeds")
-    radius = body.wheel_radius_m
-    # Per wheel: torque = J*alpha + force*r; 2*force = mass*r*alpha.
-    inertia = positive(
-        body.rotating_inertia_per_wheel_kg_m2 + body.total_mass_kg * radius**2 / 2,
-        "effective rolling inertia",
-    )
-    limit = finite(
-        body.friction_coefficient
-        * body.total_mass_kg
-        * body.gravity_m_s2
-        * body.driven_weight_fraction
-        / 2,
-        "traction limit",
-    )
     trace = run_shaft_bench(
         system,
         state,
-        (ShaftLoad(inertia_kg_m2=inertia),) * 2,
+        (ShaftLoad(inertia_kg_m2=rolling_inertia(body)),) * 2,
         duration_s,
         step_s,
         vcc_v,
         auxiliary_current_a,
     )
-    samples = []
-    for sample in trace.samples:
-        acceleration = finite(radius * sample.acceleration_rad_s2[0], "body acceleration")
-        force = finite(body.total_mass_kg * acceleration / 2, "wheel contact force")
-        if abs(force) > limit:
-            raise ValueError(
-                f"traction exceeded at {sample.time_s:g} s: requires {abs(force):g} N "
-                f"per wheel, limit {limit:g} N; wheel slip is not modeled"
-            )
-        samples.append(
-            RollingSample(
-                shaft=sample,
-                distance_m=finite(radius * sample.displacement_rad[0], "body distance"),
-                speed_m_s=finite(radius * sample.speed_rad_s[0], "body speed"),
-                acceleration_m_s2=acceleration,
-                contact_force_per_wheel_n=force,
-                traction_limit_per_wheel_n=limit,
-            )
-        )
     return RollingTrace(
-        body=body, samples=tuple(samples), duration_s=trace.duration_s, max_step_s=trace.max_step_s
+        body=body,
+        samples=tuple(rolling_sample(body, s) for s in trace.samples),
+        duration_s=trace.duration_s,
+        max_step_s=trace.max_step_s,
     )

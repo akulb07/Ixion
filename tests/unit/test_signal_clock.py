@@ -63,3 +63,28 @@ def test_callback_failure_stops_clock():
         clock.run_until(1)
     with pytest.raises(ValueError, match="failed"):
         clock.run_until(1)
+
+
+def test_peripheral_callbacks_and_gpio_share_stable_equal_time_order():
+    clock = SignalClock({"echo": False})
+    seen = []
+    clock.call_at(0.1, lambda: seen.append(("before", clock.time_s)))
+    clock.on_change("echo", lambda event: seen.append(("edge", clock.time_s)))
+    clock.schedule((edge(0.1, True),))
+
+    def after():
+        seen.append(("after", clock.time_s))
+        clock.call_at(0.1, lambda: seen.append(("nested", clock.time_s)))
+
+    clock.call_at(0.1, after)
+    clock.run_until(0.1)
+    assert seen == [(name, 0.1) for name in ("before", "edge", "after", "nested")]
+
+
+def test_gpio_pulse_capture_delivers_peripheral_callbacks_during_the_wait():
+    clock = SignalClock({"echo": False})
+    completed = []
+    clock.call_at(0.02, lambda: completed.append(clock.time_s))
+    clock.schedule((edge(0.01, True), edge(0.03, False)))
+    assert clock.pulse_width("echo", 0.04) == pytest.approx(0.02)
+    assert completed == [0.02]
