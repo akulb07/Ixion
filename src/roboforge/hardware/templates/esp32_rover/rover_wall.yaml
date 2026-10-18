@@ -1,0 +1,18 @@
+# Assumed level-ground fixture; these are not measured robot properties.
+wall_distance_m: 1
+front_offset_m: 0.1
+sensor_offset_m: 0.08
+ultrasonic: ultrasonic
+ideal_echo_interface: echo_level_shifter
+rotating_inertia_per_wheel_kg_m2: 0.002
+friction_coefficient: 0.8
+driven_weight_fraction: 0.8
+sensor:
+  response_delay_s: 0.0002
+duration_s: 3
+step_s: 0.001
+poll_every_steps: 61
+control_every_steps: 1
+brake_threshold_m: 0.6
+stopped_speed_m_s: 0.005
+timeout_action: brake

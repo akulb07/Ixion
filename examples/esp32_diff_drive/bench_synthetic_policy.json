@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "name": "Synthetic trace plumbing demonstration",
+  "reference": "Generated fixed biases only; these are not hardware acceptance tolerances",
+  "source_kind": "synthetic",
+  "speed_reference": "wheel",
+  "maximum_alignment_age_s": 0,
+  "signals": {
+    "speed_m_s": {
+      "minimum_pairs": 50,
+      "minimum_paired_fraction": 1,
+      "minimum_paired_span_s": 1,
+      "maximum_paired_gap_s": 0.03,
+      "maximum_rmse": 0.011,
+      "maximum_absolute_error": 0.011
+    },
+    "pack_voltage_v": {
+      "minimum_pairs": 50,
+      "minimum_paired_fraction": 1,
+      "minimum_paired_span_s": 1,
+      "maximum_paired_gap_s": 0.03,
+      "maximum_rmse": 0.051
+    },
+    "pack_current_a": {
+      "minimum_pairs": 50,
+      "minimum_paired_fraction": 1,
+      "minimum_paired_span_s": 1,
+      "maximum_paired_gap_s": 0.03,
+      "maximum_rmse": 0.021
+    }
+  }
+}

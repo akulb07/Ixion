@@ -126,13 +126,240 @@ def main(argv: list[str] | None = None) -> int:
     rover_suite.add_argument("project", type=Path)
     rover_suite.add_argument("suite", type=Path)
     rover_suite.add_argument("--output", type=Path, required=True)
+    rover_suite.add_argument("--junit", type=Path, help="Also write JUnit XML for CI")
     rover_report = subparsers.add_parser(
         "rover-report", help="Create an offline timeline viewer from saved rover JSON"
     )
     rover_report.add_argument("report", type=Path)
     rover_report.add_argument("--output", type=Path, required=True)
+    rover_compare = subparsers.add_parser(
+        "rover-compare", help="Compare saved hardware suites under identical declared conditions"
+    )
+    rover_compare.add_argument("baseline", type=Path)
+    rover_compare.add_argument("candidate", type=Path)
+    rover_compare.add_argument("--output", type=Path, required=True)
+    build_reference = subparsers.add_parser(
+        "build-reference", help="Export parts, pins and bench references from a hardware project"
+    )
+    build_reference.add_argument("project", type=Path)
+    build_reference.add_argument("--suite", type=Path)
+    build_reference.add_argument("--case")
+    build_reference.add_argument("--output", type=Path, required=True)
+    verify_reference = subparsers.add_parser(
+        "verify-build-reference", help="Verify a portable hardware build-reference packet"
+    )
+    verify_reference.add_argument("archive", type=Path)
+    rover_bench = subparsers.add_parser(
+        "rover-bench", help="Compare a declared bench CSV trace with saved rover evidence"
+    )
+    rover_bench.add_argument("report", type=Path)
+    rover_bench.add_argument("trace", type=Path)
+    rover_bench.add_argument("metadata", type=Path)
+    rover_bench.add_argument("--case")
+    rover_bench.add_argument("--time-offset-s", type=float, required=True)
+    rover_bench.add_argument("--max-sample-age-s", type=float, required=True)
+    rover_bench.add_argument("--output", type=Path, required=True)
+    bench_check = subparsers.add_parser(
+        "rover-bench-check",
+        help="Check saved bench evidence against explicit error and coverage limits",
+    )
+    bench_check.add_argument("comparison", type=Path)
+    bench_check.add_argument("policy", type=Path)
+    bench_check.add_argument("--output", type=Path, required=True)
+    bench_check.add_argument("--junit", type=Path)
+    starter = subparsers.add_parser(
+        "new-project", help="Create the bundled rover starter with assumed part values"
+    )
+    starter.add_argument("destination", type=Path)
+    starter.add_argument("--template", choices=["esp32-rover"], default="esp32-rover")
+    starter.add_argument(
+        "--demo",
+        action="store_true",
+        help="Also run the reference suite and save JSON, JUnit and HTML",
+    )
+    bench_bundle = subparsers.add_parser(
+        "rover-bench-bundle",
+        help="Package original bench inputs and declared acceptance in a portable ZIP",
+    )
+    bench_bundle.add_argument("report", type=Path)
+    bench_bundle.add_argument("trace", type=Path)
+    bench_bundle.add_argument("metadata", type=Path)
+    bench_bundle.add_argument("policy", type=Path)
+    bench_bundle.add_argument("--case")
+    bench_bundle.add_argument("--time-offset-s", type=float, required=True)
+    bench_bundle.add_argument("--max-sample-age-s", type=float, required=True)
+    bench_bundle.add_argument("--output", type=Path, required=True)
+    verify_bench = subparsers.add_parser(
+        "verify-bench-bundle",
+        help="Verify and recompute a portable bench check without extracting files",
+    )
+    verify_bench.add_argument("archive", type=Path)
+    verify_bench.add_argument(
+        "--output", type=Path, help="Save the recomputed full bench acceptance JSON"
+    )
+    verify_bench.add_argument("--junit", type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.command == "rover-bench-bundle":
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.hardware.bench_bundle import write_bench_bundle
+
+            validate_output_paths(
+                [args.output], protected=[args.report, args.trace, args.metadata, args.policy]
+            )
+            result = write_bench_bundle(
+                args.output,
+                args.report,
+                args.trace,
+                args.metadata,
+                args.policy,
+                time_offset_s=args.time_offset_s,
+                maximum_sample_age_s=args.max_sample_age_s,
+                case_name=args.case,
+            )
+            print(
+                f"Saved original bench inputs: {args.output}; declared {result['source_kind']} acceptance: {result['status']}"
+            )
+            return {"pass": 0, "fail": 3, "inconclusive": 4}[result["status"]]
+        if args.command == "verify-bench-bundle":
+            import json
+
+            from roboforge.ci_reports import bench_acceptance_junit, validate_output_paths
+            from roboforge.hardware.bench_bundle import verify_bench_bundle
+
+            validate_output_paths([args.output, args.junit], protected=[args.archive])
+            result = verify_bench_bundle(args.archive)
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            junit = None if args.junit is None else bench_acceptance_junit(result)
+            if args.output is not None:
+                with args.output.open("x", encoding="utf-8") as stream:
+                    stream.write(payload + "\n")
+            if args.junit is not None:
+                with args.junit.open("x", encoding="utf-8") as stream:
+                    stream.write(junit)
+            print(
+                f"Verified archive consistency; declared {result['source_kind']} acceptance: {result['status']}"
+            )
+            return {"pass": 0, "fail": 3, "inconclusive": 4}[result["status"]]
+        if args.command == "new-project":
+            from roboforge.hardware.starter import create_starter
+
+            manifest = create_starter(args.destination, template=args.template, run_demo=args.demo)
+            print(
+                f"Created {manifest['template']} in {args.destination.resolve()}; {manifest['component_instances']} components; engineering readiness is unassessed"
+            )
+            print(
+                f'Inspect the assumed parts: ixion inspect-project "{args.destination / "robot.yaml"}"'
+            )
+            if manifest["demo"] is not None:
+                print(
+                    f"Demo {manifest['demo']['status']}: {manifest['demo']['passed']}/{manifest['demo']['total']} cases passed; open {args.destination / 'results/rover-suite.html'}"
+                )
+                return 0 if manifest["demo"]["status"] == "passed" else 3
+            return 0
+        if args.command == "rover-bench-check":
+            import json
+
+            from roboforge.ci_reports import bench_acceptance_junit, validate_output_paths
+            from roboforge.hardware.bench_acceptance import (
+                check_bench_comparison,
+                load_bench_policy,
+            )
+            from roboforge.hardware.rover_report import load_rover_evidence
+
+            validate_output_paths(
+                [args.output, args.junit], protected=[args.comparison, args.policy]
+            )
+            comparison, comparison_digest = load_rover_evidence(args.comparison)
+            policy, policy_digest = load_bench_policy(args.policy)
+            result = check_bench_comparison(
+                comparison,
+                policy,
+                comparison_sha256=comparison_digest,
+                policy_source_sha256=policy_digest,
+            )
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            junit = None if args.junit is None else bench_acceptance_junit(result)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            if args.junit is not None:
+                with args.junit.open("x", encoding="utf-8") as stream:
+                    stream.write(junit)
+            print(
+                f"{result['status']}: {result['source_kind']} bench evidence against {policy.name}; saved to {args.output}"
+            )
+            return {"pass": 0, "fail": 3, "inconclusive": 4}[result["status"]]
+        if args.command == "rover-bench":
+            import json
+
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.hardware.bench_trace import compare_bench_trace, load_bench_trace
+            from roboforge.hardware.rover_report import load_rover_evidence
+
+            validate_output_paths([args.output], protected=[args.report, args.trace, args.metadata])
+            report, digest = load_rover_evidence(args.report)
+            trace = load_bench_trace(args.trace, args.metadata)
+            result = compare_bench_trace(
+                report,
+                trace,
+                time_offset_s=args.time_offset_s,
+                maximum_sample_age_s=args.max_sample_age_s,
+                case_name=args.case,
+                report_sha256=digest,
+            )
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            print(
+                f"{result['status']}: {result['source_kind']} trace; {result['counts']['paired_rows']}/{result['counts']['total']} rows paired; saved to {args.output}"
+            )
+            return 0 if result["status"] == "compared" else 3
+        if args.command == "verify-build-reference":
+            from roboforge.hardware.build_reference import verify_build_reference
+
+            result = verify_build_reference(args.archive)
+            print(
+                f"Verified build reference for {result['project_name']}; {result['component_instances']} component instances; engineering readiness is unassessed"
+            )
+            return 0
+        if args.command == "build-reference":
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.hardware import load_project
+            from roboforge.hardware.build_reference import write_build_reference
+            from roboforge.hardware.rover_suite import load_rover_suite
+
+            validate_output_paths(
+                [args.output],
+                protected=[args.project, *([] if args.suite is None else [args.suite])],
+            )
+            suite = None if args.suite is None else load_rover_suite(args.suite)
+            result = write_build_reference(
+                args.output, load_project(args.project), suite, args.case
+            )
+            print(
+                f"Exported {result['component_instances']} component instances; {result['design_errors']} design errors; {len(result['incomplete_component_metadata'])} parts have incomplete metadata; saved to {args.output}"
+            )
+            return 3 if result["design_errors"] else 0
+        if args.command == "rover-compare":
+            import json
+
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.hardware.rover_comparison import compare_rover_suites
+            from roboforge.hardware.rover_report import load_rover_evidence
+
+            validate_output_paths([args.output], protected=[args.baseline, args.candidate])
+            baseline, base_digest = load_rover_evidence(args.baseline)
+            candidate, next_digest = load_rover_evidence(args.candidate)
+            result = compare_rover_suites(
+                baseline, candidate, baseline_sha256=base_digest, candidate_sha256=next_digest
+            )
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            print(
+                f"{result['status']}: candidate acceptance; {result['design_changes']['total']} design changes; saved to {args.output}"
+            )
+            return 0 if result["status"] == "passed" else 3
         if args.command == "rover-report":
             from roboforge.hardware.rover_report import load_rover_evidence, render_rover_evidence
 
@@ -147,15 +374,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "rover-suite":
             import json
 
+            from roboforge.ci_reports import rover_suite_junit, validate_output_paths
             from roboforge.hardware import load_project
             from roboforge.hardware.rover_suite import load_rover_suite, run_rover_suite
 
-            if args.output.exists():
-                raise ValueError("rover suite output already exists; choose a new path")
+            validate_output_paths([args.output, args.junit], protected=[args.project, args.suite])
             result = run_rover_suite(load_project(args.project), load_rover_suite(args.suite))
             payload = json.dumps(result, indent=2, allow_nan=False)
+            junit = None if args.junit is None else rover_suite_junit(result)
             with args.output.open("x", encoding="utf-8") as stream:
                 stream.write(payload + "\n")
+            if args.junit is not None:
+                with args.junit.open("x", encoding="utf-8") as stream:
+                    stream.write(junit)
             summary = result["summary"]
             print(
                 f"{result['status']}: {summary['passed']}/{summary['total']} cases passed; "

@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_
 from roboforge.config import Nonnegative, Probability, Real
 from roboforge.core import finite
 
+from .artifact_io import decode_json_object
 from .encoder_health import EncoderFeedbackFault
 from .speed_firmware import SpeedControlSample
 
@@ -80,33 +81,11 @@ class _RoverView(_View):
         return self
 
 
-def _mapping(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"duplicate report key: {key}")
-        result[key] = value
-    return result
-
-
 def load_rover_evidence(path: str | Path) -> tuple[dict, str]:
     try:
         with Path(path).open("rb") as stream:
             raw = stream.read(64 * 1024 * 1024 + 1)
-        if len(raw) > 64 * 1024 * 1024:
-            raise ValueError("rover evidence exceeds 64 MiB")
-
-        def reject_constant(value):
-            raise ValueError(f"nonfinite JSON constant: {value}")
-
-        report = json.loads(
-            raw,
-            object_pairs_hook=_mapping,
-            parse_constant=reject_constant,
-            parse_float=lambda value: finite(float(value), "report number"),
-        )
-        if not isinstance(report, dict):
-            raise ValueError("rover evidence must be a JSON object")
+        report = decode_json_object(raw, maximum_bytes=64 * 1024 * 1024, label="rover evidence")
         return report, hashlib.sha256(raw).hexdigest()
     except (OSError, ValueError, RecursionError) as exc:
         raise ValueError(f"Invalid rover evidence {path}: {exc}") from exc
@@ -201,8 +180,67 @@ def _case(name, status, checks, report, error=None):
     return result
 
 
-def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> str:
+def project_rover_evidence(report: dict, source_sha256: str = "unavailable") -> dict:
+    """Validate the displayed subset and retain all recorded motion samples."""
     try:
+        if report.get("experiment") == "rover_bench_acceptance":
+            from .bench_acceptance import recompute_bench_acceptance
+
+            checked = recompute_bench_acceptance(report)
+            data = project_rover_evidence(checked["comparison"], source_sha256)
+            data["name"] = (
+                f"Bench acceptance / {checked['status']} / declared {checked['source_kind']}"
+            )
+            data["bench_acceptance"] = {
+                key: value for key, value in checked.items() if key != "comparison"
+            }
+            return data
+        if report.get("experiment") == "rover_bench_comparison":
+            from .bench_trace import recompute_bench_comparison
+
+            bench = recompute_bench_comparison(report)
+            return {
+                "name": f"Bench comparison / declared {bench['source_kind']}",
+                "source_sha256": source_sha256,
+                "cases": [_case("simulation", "recorded", [], report["simulation"])],
+                "bench": {key: value for key, value in bench.items() if key != "simulation"},
+            }
+        if report.get("experiment") == "rover_design_comparison":
+            from .rover_comparison import compare_rover_suites
+
+            if report.get("schema_version") != 1:
+                raise ValueError("rover view supports comparison schema 1")
+            comparison = compare_rover_suites(
+                report["runs"]["baseline"], report["runs"]["candidate"]
+            )
+            # Recompute analysis from the embedded evidence rather than trust edited deltas.
+            views = {
+                label: project_rover_evidence(report["runs"][label])["cases"]
+                for label in ("baseline", "candidate")
+            }
+            by_name = {
+                label: {case["name"]: case for case in cases} for label, cases in views.items()
+            }
+            cases = []
+            for result in comparison["cases"]:
+                first = len(cases)
+                for label in ("baseline", "candidate"):
+                    case = by_name[label][result["name"]]
+                    cases.append(
+                        {
+                            **case,
+                            "name": f"{label} / {result['name']}",
+                            "design": label,
+                            "comparison_key": result["name"],
+                            "peer_index": first + (1 if label == "baseline" else 0),
+                        }
+                    )
+            return {
+                "name": "Hardware design comparison",
+                "source_sha256": source_sha256,
+                "cases": cases,
+                "comparison": {key: value for key, value in comparison.items() if key != "runs"},
+            }
         if report.get("experiment") == "rover_acceptance_suite":
             if report.get("schema_version") != 1:
                 raise ValueError("rover view supports suite schema 1")
@@ -217,7 +255,14 @@ def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> s
         else:
             cases = [_case("rover", "recorded", [], report)]
             name = "Rover experiment"
-        data = {"name": str(name), "source_sha256": source_sha256, "cases": cases}
+        return {"name": str(name), "source_sha256": source_sha256, "cases": cases}
+    except (KeyError, TypeError, ValueError, AttributeError, RecursionError) as exc:
+        raise ValueError(f"Unsupported or invalid rover evidence: {exc}") from exc
+
+
+def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> str:
+    try:
+        data = project_rover_evidence(report, source_sha256)
         encoded = (
             json.dumps(data, ensure_ascii=True, allow_nan=False)
             .replace("<", "\\u003c")
@@ -242,12 +287,24 @@ def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> s
             '<aside><h2>EXPERIMENTS</h2><nav id="cases" aria-label="Recorded cases"></nav>'
             "<p>Saved simulation evidence. No simulation runs in this viewer.</p></aside>"
             '<main><div class="heading"><h1 id="case-name"></h1><span id="outcome"></span></div>'
-            '<p id="error" role="status"></p><section id="run"><div id="metrics" class="metrics"></div>'
+            '<p id="error" role="status"></p><section id="comparison" hidden><h2>Design comparison · candidate minus baseline</h2>'
+            '<p id="comparison-outcomes"></p><div id="comparison-metrics" class="table-scroll"></div>'
+            '<details><summary>Declared design changes</summary><pre id="design-changes"></pre></details></section>'
+            '<section id="bench" hidden><h2>Bench trace · prediction minus measurement</h2><p id="bench-source"></p>'
+            '<div id="bench-acceptance" hidden><h3>Declared acceptance policy</h3><p id="bench-acceptance-status"></p>'
+            '<div id="bench-acceptance-checks" class="table-scroll"></div>'
+            '<details><summary>Policy, coverage and scope</summary><pre id="bench-acceptance-policy"></pre></details></div>'
+            '<div id="bench-metrics" class="table-scroll"></div>'
+            '<label for="bench-row">Inspect measurement row <output id="bench-row-label"></output></label>'
+            '<input id="bench-row" type="range" min="0" step="1" value="0" aria-label="Measurement row">'
+            '<pre id="bench-detail"></pre><p class="hint">Only paired values appear as trace overlays. '
+            "Selecting an in-range measurement row moves the simulation cursor. Out-of-range rows leave it unchanged; rejected rows remain unpaired.</p></section>"
+            '<section id="run"><div id="metrics" class="metrics"></div>'
             '<div class="transport"><label for="playhead">Inspect time <output id="time"></output></label>'
             '<input id="playhead" type="range" min="0" step="1" value="0" aria-label="Recorded sample">'
             '<span id="sample-index"></span></div><div id="readout" class="readout"></div>'
             '<div id="charts"></div><p class="hint">Click a plot or event to inspect the latest physics sample at or before its time. '
-            "Plots show up to 1,500 points per series; readouts use every saved sample. Lines join recorded points.</p>"
+            "Large plots keep bucket minima and maxima in time order, up to 1,500 points per series. Smaller oscillations may be omitted; readouts use every saved sample. Lines join recorded points.</p>"
             '<section><h2>Acceptance checks</h2><div id="checks"></div></section>'
             '<section><h2>Event timeline</h2><label for="filter">Show </label>'
             '<select id="filter"><option value="all">All events</option><option value="fault">Counter faults</option>'

@@ -19,6 +19,20 @@ Install this checkout with `python -m pip install -e .`
 to get the `ixion` command. The `roboforge` command, Python imports and existing
 run formats remain compatible. The repository URL has not changed.
 
+For a [starter rover](docs/starter-rover.md) with its first four checks and an
+offline viewer:
+
+```sh
+ixion new-project my-rover --demo
+```
+
+Open `my-rover/results/rover-suite.html`. The templates ship with the installed
+package, so this works outside the source checkout too. They're still assumed
+parts and geometry, with no claim that the physical robot has been validated.
+
+The [first rover experiment](docs/first-rover-experiment.md) walks through adding
+a payload, comparing the same cases and taking the saved design to the bench.
+
 ```sh
 ixion inspect-project examples/esp32_diff_drive/robot.yaml
 ```
@@ -183,6 +197,45 @@ ixion rover-report rover-suite.json --output rover-suite.html
 The [offline viewer](docs/rover-viewer.md) puts speed, counter readings, PWM and
 current on a shared timeline. Click a fault or brake event to inspect what was
 recorded at that time. It reads the saved report without rerunning the rover.
+
+There's also a first [design comparison](docs/rover-comparison.md). To see what
+an extra kilogram does to the assumed reference rover:
+
+```sh
+python examples/esp32_diff_drive/compare_payload.py --extra-mass-kg 1 --output results/payload-check
+```
+
+It runs the same cases on both designs and saves the changed inputs, metric
+differences and an HTML viewer. The numbers are estimates from this fixture,
+so a passing comparison still needs to be checked against a physical robot.
+
+When you want the design details in one place for the bench:
+
+```sh
+ixion build-reference examples/esp32_diff_drive/robot.yaml --output build-reference.zip
+```
+
+The [build reference](docs/build-reference.md) includes parts, pins, declared nets,
+parameter sources and a blank measurement checklist. Missing part details stay
+visible. It doesn't generate board firmware or a verified wiring guide.
+
+There is now a first [bench-trace comparison](docs/bench-traces.md) too. It takes
+a CSV recording and explicit timing alignment, then compares speed, voltage,
+current or travel with a saved run. Missing values stay missing. A synthetic
+example lets you try the import before collecting physical measurements:
+
+```sh
+python examples/esp32_diff_drive/synthetic_bench_check.py --output results/synthetic-bench
+```
+
+You can now save [error and coverage limits](docs/bench-acceptance.md) and check
+that evidence locally or in CI with `ixion rover-bench-check`. Missing data stays
+inconclusive, and a policy expecting measured data rejects a synthetic trace.
+The included synthetic policy only demonstrates the workflow.
+
+To share a recording and its checks, [bench bundles](docs/bench-bundles.md) keep
+the original inputs in one ZIP. The recipient can recompute the results offline
+with `ixion verify-bench-bundle` and export a fresh viewer.
 
 There's a first [I2C IMU fixture](docs/imu-i2c.md) now too:
 

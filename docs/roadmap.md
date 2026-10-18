@@ -107,12 +107,47 @@ failed checks or error cases. This starts the repeatable hardware regression
 workflow in partial Phases E/F; cross-project comparisons, general scenarios and
 physical acceptance limits remain ahead.
 
+Rover suites now export JUnit results for CI, distinguishing check failures from
+model errors while keeping actual/expected evidence. A first
+[hardware design comparison](rover-comparison.md) checks identical declared
+conditions before comparing saved suites. It preserves both source reports,
+normalized project fingerprints, explicit design changes and metric deltas with
+units. An extra-payload example and paired offline traces extend partial Phases
+F/G. Arbitrary assemblies, real cost data, source-code attestation and physical
+validation are still ahead.
+
+A first [build-reference packet](build-reference.md) now exports the saved project,
+component instances, parameter evidence, MCU pins, declared wiring, diagnostics and
+a blank bench checklist. An optional selected suite case adds host-controller
+configuration. A bounded read-only verifier checks generated content and hashes;
+missing part metadata and unassessed readiness stay explicit. This starts the
+bench handoff in partial Phase G, without board firmware generation, verified
+shopping lists or physical wiring instructions.
+
+A first [bench-trace comparison](bench-traces.md) now imports declared measured or
+synthetic CSV data with explicit clock offset and sample-age limits. It reports
+paired errors, missing coverage and individual row evidence without modifying the
+saved model. An offline view overlays paired signals and retains rejected rows.
+This begins the measurement-analysis part of partial Phase G. A separate
+[bench acceptance policy](bench-acceptance.md) now checks declared error limits,
+paired counts/fractions, span, gaps, clock-age allowance and source kind. HTML and
+JUnit recompute the checks from saved evidence. Real measurements, instrument
+validation, justified physical bounds and model calibration are still open.
+
+A [portable bench bundle](bench-bundles.md) now retains the original run, CSV,
+metadata, policy and explicit alignment. Its bounded verifier reads without
+extracting files and recomputes acceptance before exporting a full report or
+JUnit. This extends partial Phases F/G to offline evidence review; hashes prove
+internal consistency, not instrument authenticity or physical accuracy.
+
 A first [offline rover evidence viewer](rover-viewer.md) now links recorded
 motion, observed/raw counts, driver duty, pack current and sensor/control/serial
 events with one time cursor. It accepts individual runs and suites, preserves
 failed-check evidence and never reruns physics. This is an initial debugging
-artifact, separate from the main IDE; broader replay controls, exact peak-preserving
-plots, browser validation and integrated hardware workspace editing remain ahead.
+artifact, separate from the main IDE. Large plots now retain ordered bucket minima
+and maxima so brief recorded extrema survive the display reduction. Smaller
+oscillations and peaks between saved samples remain unknown. Broader replay controls,
+browser validation and integrated hardware workspace editing remain ahead.
 
 ## What would make this worth using
 
@@ -149,6 +184,13 @@ The release demo should be: open a working rover, swap in a weaker driver, see
 the predicted issue and its assumptions, swap it back, then compare the simulation
 with measurements from the physical rover. This is the target demo, not a claim
 that it works today.
+
+A [bundled starter rover](starter-rover.md) now creates editable inputs from the
+installed wheel. `ixion new-project my-rover --demo` also saves the four reference
+cases, JUnit results and an offline viewer. Its initial manifest preserves file
+fingerprints and diagnostics while leaving readiness unassessed. This advances
+the CLI first-run workflow in partial Phase G; the hardware IDE and physical
+reference validation are still pending.
 
 AI features, photorealistic graphics, cloud collaboration and a large parts catalog
 stay deferred until this reference workflow is convincing. Calibration and richer

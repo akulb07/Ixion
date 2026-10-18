@@ -31,14 +31,22 @@ the original event/request time in its payload. Pending serial messages appear
 at request time with their future completion time in the details; they aren't
 presented as delivered. Filter the list to inspect one event type.
 
-Plots use up to 1,500 points per series and join recorded points. Readouts retain
-every saved physics sample. Use the original JSON for exact numerical analysis;
-plot decimation can hide a brief peak. A driver PWM of one during a latched brake
+Plots use up to 1,500 points per series and join recorded points. Large series
+retain their first/last samples and the minimum and maximum of each interior
+bucket in original time order. A brief recorded global peak or valley survives
+this reduction; smaller oscillations inside a bucket may still be omitted. No
+new sample values are interpolated by the reduction. Readouts retain every saved
+physics sample. Use the original JSON for exact numerical analysis and remember
+that a peak between recorded physics samples remains unknown. A driver PWM of one during a latched brake
 is the short-brake command, not forward drive. The source JSON SHA-256 identifies
 the imported bytes; it doesn't certify the report or validate physical accuracy.
 
-The viewer supports rover schema 7, speed-control schema 2 and suite schema 1.
-Inputs are limited to 64 MiB, 16 cases, 10,001 motion samples per case and 20,000
+The viewer supports rover schema 7, speed-control schema 2, suite schema 1 and
+[design comparison](rover-comparison.md) schema 1. A comparison shows paired cases,
+metric deltas and peer traces. [Bench comparison](bench-traces.md) and
+[bench acceptance](bench-acceptance.md) schema 1 reports show declared source kind,
+paired measurements, errors and recomputed policy results. Inputs are limited to 64 MiB, 16 suite cases
+(up to 16 pairs in a comparison), 10,001 motion samples per case and 20,000
 events per case. It checks the fields it displays and rejects nonfinite numbers,
 duplicate JSON keys, unordered sample times, unsupported versions and count values
 that JavaScript can't represent exactly. This is a projection of the report, not

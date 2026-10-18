@@ -62,3 +62,16 @@ Passing all checks means only that the declared simulated criteria were met.
 Exit code 0 means every case passed, 3 means a check failed or a case hit a model
 error, and 2 means invalid input or a file error. Failed suites still save their
 evidence. Existing output files are never replaced. Use a fresh filename each time.
+
+## Running it in CI
+
+Add `--junit rover-suite.xml` to the command to write CI test results as well as
+the JSON evidence. Each rover case becomes one test. A failed acceptance check
+is a test failure; a simulation/model error is a test error. The XML keeps every
+check's actual and expected values. Simulation duration isn't reported as test
+execution time. These results describe the declared simulated checks only.
+
+JSON and XML paths must be distinct, new, and different from the input files.
+Both are checked before simulation starts. Files are written sequentially, so an
+I/O failure or a competing writer can leave only the first output; the command
+reports a file error in that situation. Existing files are never overwritten.

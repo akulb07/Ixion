@@ -25,7 +25,7 @@ roboforge = "roboforge.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-roboforge = ["py.typed", "web/index.html", "web/assets/*", "hardware/assets/*"]
+roboforge = ["py.typed", "web/index.html", "web/assets/*", "hardware/assets/*", "hardware/templates/esp32_rover/*", "hardware/templates/esp32_rover/.gitignore"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
