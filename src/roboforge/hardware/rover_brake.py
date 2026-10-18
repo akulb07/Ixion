@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 
 from roboforge.config import Nonnegative, Positive, Probability, Schema, _UniqueKeyLoader
 from roboforge.core import finite
@@ -56,6 +56,7 @@ class RoverBrakeConfig(Schema):
     rotating_inertia_per_wheel_kg_m2: Nonnegative
     friction_coefficient: Nonnegative
     driven_weight_fraction: Probability = Field(gt=0)
+    grade_rad: Nonnegative = Field(default=0, lt=math.pi / 2)
     sensor: UltrasonicConfig
     imu: RoverIMUConfig | None = None
     serial: RoverSerialConfig | None = None
@@ -67,6 +68,13 @@ class RoverBrakeConfig(Schema):
     brake_threshold_m: Positive = 0.3
     stopped_speed_m_s: Positive = 0.005
     timeout_action: Literal["brake", "continue"] = "brake"
+
+    @model_serializer(mode="wrap")
+    def preserve_level_encoding(self, handler):
+        data = handler(self)
+        if self.grade_rad == 0:
+            data.pop("grade_rad", None)
+        return data
 
     @model_validator(mode="after")
     def check_fixture(self):
@@ -200,6 +208,7 @@ def run_rover_brake(
         rotating_inertia_per_wheel_kg_m2=config.rotating_inertia_per_wheel_kg_m2,
         friction_coefficient=config.friction_coefficient,
         driven_weight_fraction=config.driven_weight_fraction,
+        grade_rad=config.grade_rad,
     )
     mounted = tuple(resolve_mounted_encoder(project, m) for m in motors)
     names = ("left", "right")
@@ -354,6 +363,7 @@ def run_rover_brake(
             body.gravity_m_s2,
             None if serial is None else imu_event,
             on_reading=lambda observation: controller.on_imu(observation, firmware_inputs()),
+            grade_rad=body.grade_rad,
         )
     )
 
@@ -462,6 +472,10 @@ def run_rover_brake(
     )
     runtime = RollingRuntime(system, BatteryState(), body)
     start = runtime.sample
+    if config.grade_rad > 0 and start.acceleration_m_s2 < 0:
+        raise ValueError(
+            "commanded startup torque is insufficient for this grade; rollback and hill holding are unsupported by the forward rover fixture"
+        )
     record(start)
     steps = max(1, math.ceil(config.duration_s / config.step_s))
     for index in range(steps):
@@ -494,6 +508,10 @@ def run_rover_brake(
             elapsed, tuple(c.motor_inputs(outputs.inputs(c.channel)) for c in connections)
         )
         if result.end.speed_m_s < 0:
+            if config.grade_rad > 0:
+                raise ValueError(
+                    "inclined rover reached rollback; reduce step_s if braking crossed the stop threshold, or review the drive torque and grade; rollback and hill holding are unsupported"
+                )
             raise ValueError("forward rover fixture reversed numerically; reduce step_s")
         _schedule_encoders(clock, mounted, input_pin_map, result)
         if imu is not None:
@@ -524,7 +542,7 @@ def run_rover_brake(
     )
     emit_log({"event": "run_end", "status": status})
     return {
-        "schema_version": 7,
+        "schema_version": 7 if config.grade_rad == 0 else 8,
         "experiment": "straight_line_wall_brake",
         "result_type": "estimate",
         "status": status,
@@ -572,14 +590,14 @@ def run_rover_brake(
         "diagnostics": [d.model_dump() for d in outputs.diagnostics],
         "power_diagnostics": sorted(power_diagnostics),
         "limitations": [
-            "Level ground, identical motors, equal commands, positive wheel orientation, no slip or turning",
-            "One infinite perpendicular wall; front and sensor offsets are explicit fixture assumptions",
+            "Constant nonnegative grade, identical motors, equal commands, positive wheel orientation, no slip or turning; driven normal-load fraction is prescribed without load transfer",
+            "Distances and speeds follow the inclined lane; one wall is perpendicular to travel; front and sensor offsets are explicit assumptions",
             "Range is sampled at trigger time; no beam shape, acoustic reflection or motion during flight",
             "Logical sonar signals follow declared nets; any selected echo interface is ideal, with no analog conversion or delay",
             "Encoder pins and driver commands adapt to project wiring; host Python, no ESP32 binary execution",
             "Host firmware callbacks run synchronously without CPU timing or process isolation; first brake request latches until the next control tick",
             "Battery and 3.3 V logic supplies are explicit; regulator and power nets are not executed",
-            "Stopped means the configured speed threshold; no rolling resistance, static friction or holding model",
+            "Stopped means the configured forward speed threshold; no rolling resistance, static friction, rollback or hill-holding model",
             "First wall contact ends the estimate with its approach speed; impact forces are not modeled",
             "Explicit Euler with averaged PWM; verify convergence and physical measurements before relying on estimates",
         ],

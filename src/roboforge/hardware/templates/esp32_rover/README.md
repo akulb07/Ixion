@@ -14,6 +14,9 @@ ixion rover-report wall-run.json --output wall-run.html
 
 Open `wall-run.html` in a browser to inspect motion, encoder counts, PWM, pack
 current and events. The report is local and doesn't need an internet connection.
+Use `rover_uphill.yaml` with new output names to try the supplied 5° uphill lane.
+Travel is along the lane; the speed-threshold stop doesn't establish hill holding.
+
 For the normal case and three encoder faults:
 
 ```sh

@@ -41,7 +41,8 @@ that a peak between recorded physics samples remains unknown. A driver PWM of on
 is the short-brake command, not forward drive. The source JSON SHA-256 identifies
 the imported bytes; it doesn't certify the report or validate physical accuracy.
 
-The viewer supports rover schema 7, speed-control schema 2, suite schema 1 and
+The viewer supports level rover schema 7, [uphill rover](rover-inclines.md) schema 8,
+speed-control schema 2, suite schema 1 and
 [design comparison](rover-comparison.md) schema 1. A comparison shows paired cases,
 metric deltas and peer traces. [Bench comparison](bench-traces.md) and
 [bench acceptance](bench-acceptance.md) schema 1 reports show declared source kind,

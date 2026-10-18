@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+import math
 from importlib.resources import files
 from pathlib import Path
 from typing import Any, Literal
@@ -67,7 +68,7 @@ class _Sample(_View):
 
 
 class _RoverView(_View):
-    schema_version: Literal[7]
+    schema_version: Literal[7, 8]
     experiment: Literal["straight_line_wall_brake"]
     status: str = Field(min_length=1, max_length=100)
     brake_reason: str | None = Field(default=None, max_length=200)
@@ -106,6 +107,16 @@ def _case(name, status, checks, report, error=None):
             raise ValueError("missing rover report requires an explicit error case")
         return {"name": str(name), "status": status, "checks": checks, "error": error, "run": None}
     view = _RoverView.model_validate(report)
+    grade = finite((report.get("config") or {}).get("grade_rad", 0), "recorded rover grade")
+    body_grade = finite((report.get("body") or {}).get("grade_rad", 0), "recorded body grade")
+    if grade != body_grade:
+        raise ValueError("recorded grade disagrees with the rolling body")
+    if (view.schema_version == 7 and grade != 0) or (
+        view.schema_version == 8 and not 0 < grade < math.pi / 2
+    ):
+        raise ValueError(
+            "rover schema 7 requires level travel; schema 8 requires an explicit uphill grade"
+        )
     metrics = view.metrics.model_dump(mode="json")
     events = []
 
@@ -171,6 +182,7 @@ def _case(name, status, checks, report, error=None):
         "error": error,
         "run": {
             **view.model_dump(mode="json"),
+            "grade_rad": grade,
             "events": sorted(events, key=lambda event: event["time_s"]),
             "speed_control": control,
             "configuration": {"scenario": report.get("config"), "firmware": report.get("firmware")},
@@ -299,7 +311,7 @@ def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> s
             '<input id="bench-row" type="range" min="0" step="1" value="0" aria-label="Measurement row">'
             '<pre id="bench-detail"></pre><p class="hint">Only paired values appear as trace overlays. '
             "Selecting an in-range measurement row moves the simulation cursor. Out-of-range rows leave it unchanged; rejected rows remain unpaired.</p></section>"
-            '<section id="run"><div id="metrics" class="metrics"></div>'
+            '<section id="run"><p id="fixture-scope" class="hint"></p><div id="metrics" class="metrics"></div>'
             '<div class="transport"><label for="playhead">Inspect time <output id="time"></output></label>'
             '<input id="playhead" type="range" min="0" step="1" value="0" aria-label="Recorded sample">'
             '<span id="sample-index"></span></div><div id="readout" class="readout"></div>'

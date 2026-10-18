@@ -22,6 +22,12 @@ def main():
     parser.add_argument("--friction", type=float, default=0.8)
     parser.add_argument("--driven-weight-fraction", type=float, default=0.8)
     parser.add_argument(
+        "--grade-rad",
+        type=float,
+        default=0,
+        help="constant signed grade; positive rises along travel",
+    )
+    parser.add_argument(
         "--encoder-cycles", type=int, help="assumed A/B cycles per output-wheel revolution"
     )
     args = parser.parse_args()
@@ -44,6 +50,7 @@ def main():
         rotating_inertia_per_wheel_kg_m2=args.inertia,
         friction_coefficient=args.friction,
         driven_weight_fraction=args.driven_weight_fraction,
+        grade_rad=args.grade_rad,
     )
     trace = run_rolling_bench(system, BatteryState(), body, args.seconds, args.step)
     encoders = None
@@ -96,7 +103,7 @@ def main():
         json.dumps(
             {
                 "result_type": "estimate",
-                "condition": "level ground, equal motors, no slip; inertia and contact values assumed",
+                "condition": "constant declared grade, equal motors, no slip; inertia and contact values assumed",
                 "inputs": {
                     name: [p.model_dump() for p in parts[name].parameters]
                     for name in ("battery", "left_motor", "right_motor")

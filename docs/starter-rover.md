@@ -24,6 +24,8 @@ The starter contains:
 - `robot.yaml`: the assumed 15-component hardware graph, part parameters,
   provenance labels, MCU pins, electrical nets and mechanical links.
 - `rover_wall.yaml`: the first fixed-wall brake experiment.
+- `rover_uphill.yaml`: a constant 5° uphill case with body-coupled IMU readings;
+  see the [incline limits](rover-inclines.md).
 - `rover_feedback_suite.yaml`: normal feedback, left/both counter freeze and
   a counter-jump case, with declared simulation checks.
 - `README.md`, `.gitignore` and the original MIT license for the template.

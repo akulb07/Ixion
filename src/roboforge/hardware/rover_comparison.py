@@ -8,6 +8,7 @@ from roboforge.core import finite, nonnegative
 from .design_identity import canonical_sha256, design_changes, project_identity
 from .encoder_speed import EncoderSpeedConfig
 from .project import RobotProject
+from .rover_brake import RoverBrakeConfig
 from .rover_firmware import ObstacleBrakeFirmware
 from .rover_report import project_rover_evidence
 from .rover_suite import RoverSuiteConfig, check_rover_acceptance
@@ -85,7 +86,7 @@ def validate_rover_suite_evidence(report):
             project
         ):
             raise ValueError("case project differs from the suite project")
-        if run["config"] != case.scenario.model_dump(mode="json"):
+        if RoverBrakeConfig.model_validate(run["config"]) != case.scenario:
             raise ValueError("case scenario differs from the suite configuration")
         program = ObstacleBrakeFirmware(
             brake_threshold_m=case.scenario.brake_threshold_m,

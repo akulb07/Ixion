@@ -88,6 +88,24 @@ def test_invalid_or_unsupported_recorded_data_is_rejected(change):
         render_rover_evidence(report)
 
 
+def test_uphill_evidence_retains_grade_and_requires_matching_body_context():
+    report = recorded()
+    report.update(schema_version=8, config={"grade_rad": 0.1}, body={"grade_rad": 0.1})
+    data, _ = embedded(render_rover_evidence(report))
+    assert data["cases"][0]["run"]["grade_rad"] == 0.1
+    report["body"]["grade_rad"] = 0.2
+    with pytest.raises(ValueError, match="grade disagrees"):
+        render_rover_evidence(report)
+
+
+@pytest.mark.parametrize("version,grade", [(7, 0.1), (8, 0), (8, -0.1), (8, 2)])
+def test_grade_cannot_be_hidden_in_a_level_report_or_omitted_from_uphill_evidence(version, grade):
+    report = recorded()
+    report.update(schema_version=version, config={"grade_rad": grade}, body={"grade_rad": grade})
+    with pytest.raises(ValueError, match="schema 7 requires level"):
+        render_rover_evidence(report)
+
+
 def test_failed_and_error_suite_cases_remain_visible():
     report = {
         "schema_version": 1,

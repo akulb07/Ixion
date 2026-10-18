@@ -188,3 +188,17 @@ def test_build_reference_decompression_uses_bounded_member_reads(tmp_path, monke
     monkeypatch.setattr(zipfile.ZipExtFile, "read", bounded_read)
     verify_build_reference(source)
     assert len(reads) == len(BASE_FILES) + 1
+
+
+def test_level_exports_keep_legacy_encoding_and_grade_exports_declare_version_two(tmp_path, model):
+    level = load_rover_suite(REFERENCE.with_name("rover_feedback_suite.yaml"))
+    files = build_reference_files(model, level, "normal")
+    assert json.loads(files["manifest.json"])["schema_version"] == 1
+    assert "grade_rad" not in json.loads(files["case.json"])["scenario"]
+    graded = load_rover_suite(REFERENCE.with_name("rover_grade_suite.yaml"))
+    files = build_reference_files(model, graded, "uphill_5_degrees")
+    assert json.loads(files["manifest.json"])["schema_version"] == 2
+    assert json.loads(files["case.json"])["scenario"]["grade_rad"] > 0
+    archive = tmp_path / "grade.zip"
+    write_build_reference(archive, model, graded, "uphill_5_degrees")
+    assert verify_build_reference(archive)["schema_version"] == 2

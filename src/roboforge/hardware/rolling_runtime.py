@@ -6,7 +6,7 @@ from roboforge.core import finite, positive
 from .battery import BatteryState
 from .driver import DriverInputs
 from .powertrain import MotorChannel, Powertrain
-from .rolling import RollingBody, RollingSample, rolling_inertia, rolling_sample, run_rolling_bench
+from .rolling import RollingBody, RollingSample, rolling_load, rolling_sample, run_rolling_bench
 from .shaft_dynamics import ShaftSample
 
 
@@ -17,7 +17,7 @@ class RollingStep(Schema):
 
 
 class RollingRuntime:
-    """Two equal wheels on level ground. A rejected step changes no state."""
+    """Two equal wheels on a constant grade. A rejected step changes no state."""
 
     def __init__(self, system: Powertrain, state: BatteryState, body: RollingBody):
         if len(system.channels) != 2 or system.channels[0] != system.channels[1]:
@@ -25,6 +25,7 @@ class RollingRuntime:
                 "straight-line runtime requires two identical motor channels and speeds"
             )
         point = system.operating_point(state)
+        load = rolling_load(body)
         initial = rolling_sample(
             body,
             ShaftSample(
@@ -33,7 +34,10 @@ class RollingRuntime:
                 displacement_rad=(0, 0),
                 speed_rad_s=tuple(c.output_speed_rad_s for c in system.channels),
                 acceleration_rad_s2=tuple(
-                    finite(c.motor.output_torque_nm / rolling_inertia(body), "shaft acceleration")
+                    finite(
+                        (c.motor.output_torque_nm - load.load_torque_nm) / load.inertia_kg_m2,
+                        "shaft acceleration",
+                    )
                     for c in point.channels
                 ),
                 point=point,

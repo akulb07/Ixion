@@ -262,7 +262,9 @@ def build_reference_files(
             }
         )
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2
+        if suite is not None and any(c.scenario.grade_rad != 0 for c in suite.cases)
+        else 1,
         "artifact": "hardware_build_reference",
         "project_name": project.name,
         "project_sha256": canonical_sha256(project_identity(project)),
@@ -341,7 +343,8 @@ def verify_build_reference(path: str | Path) -> dict:
             payloads["manifest.json"], maximum_bytes=MAX_ENTRY_BYTES, label="build manifest"
         )
         if (
-            manifest.get("schema_version") != 1
+            type(manifest.get("schema_version")) is not int
+            or manifest["schema_version"] not in (1, 2)
             or manifest.get("artifact") != "hardware_build_reference"
         ):
             raise ValueError("unsupported build reference manifest")

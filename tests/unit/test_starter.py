@@ -28,7 +28,7 @@ def test_starter_copies_assumptions_and_records_exact_created_bytes(tmp_path):
 
 def test_packaged_reference_inputs_match_the_maintained_examples():
     resources = files("roboforge").joinpath("hardware/templates/esp32_rover")
-    for name in ("robot.yaml", "rover_wall.yaml", "rover_feedback_suite.yaml"):
+    for name in ("robot.yaml", "rover_wall.yaml", "rover_uphill.yaml", "rover_feedback_suite.yaml"):
         assert resources.joinpath(name).read_text(encoding="utf-8") == REFERENCE.with_name(
             name
         ).read_text(encoding="utf-8")

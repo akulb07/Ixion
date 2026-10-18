@@ -1,10 +1,12 @@
 """Aligned, body-mounted IMU capture and delayed reads for the straight rover fixture."""
 
+import math
 from collections.abc import Callable
 
 from pydantic import Field, model_validator
 
 from roboforge.config import Nonnegative, Real, Schema
+from roboforge.core import finite
 
 from .board_i2c import MPU6050I2C, resolve_mpu6050_wiring
 from .mpu6050 import MPU6050, IMUSample, decode_motion_burst
@@ -50,11 +52,15 @@ class RoverIMU:
         on_event: Callable[[dict], None] | None = None,
         *,
         on_reading: Callable[[IMUObservation], None] | None = None,
+        grade_rad: float = 0,
     ):
         if on_event is not None and not callable(on_event):
             raise ValueError("IMU event callback must be callable")
         if on_reading is not None and not callable(on_reading):
             raise ValueError("IMU reading callback must be callable")
+        grade = finite(grade_rad, "IMU fixture grade")
+        if not -math.pi / 2 < grade < math.pi / 2:
+            raise ValueError("IMU fixture grade must be between -pi/2 and pi/2")
         wiring = resolve_mpu6050_wiring(project, mcu, config.bus, config.component)
         parts = {c.id: c for c in project.components}
         mounts = [
@@ -64,6 +70,7 @@ class RoverIMU:
             raise ValueError("rover IMU requires exactly one mount from a chassis")
         self.wiring = wiring
         self._config, self._clock, self._gravity = config, clock, gravity_m_s2
+        self._grade = grade
         self._device = MPU6050(gravity_m_s2)
         self._bus = ScheduledMPU6050I2C(MPU6050I2C(wiring, self._device), clock)
         self._ready_time = None
@@ -93,14 +100,18 @@ class RoverIMU:
             self._on_event({"event": "imu_ready", "time_s": self._clock.time_s})
 
     def capture(self, sample: RollingSample) -> None:
-        """Called at a physics endpoint; this fixture assumes aligned x-forward/z-up axes."""
+        """Capture lane-forward/surface-normal specific force at a constant grade."""
         if sample.shaft.time_s != self._clock.time_s:
             raise ValueError("IMU capture must occur at the shared physics timestamp")
         if self._device.sleeping:
             return
         physical = IMUSample(
             time_s=self._clock.time_s,
-            specific_force_m_s2=(sample.acceleration_m_s2, 0, self._gravity),
+            specific_force_m_s2=(
+                sample.acceleration_m_s2 + self._gravity * math.sin(self._grade),
+                0,
+                self._gravity * math.cos(self._grade),
+            ),
             angular_velocity_rad_s=(0, 0, 0),
             temperature_c=self._config.temperature_c,
         )
@@ -158,6 +169,7 @@ class RoverIMU:
 
     def report(self) -> dict:
         return {
+            "fixture_grade_rad": self._grade,
             "wiring": self.wiring.model_dump(),
             "ready_time_s": self._ready_time,
             "capture_count": self._capture_count,
@@ -169,7 +181,7 @@ class RoverIMU:
             if self._bus.pending is None
             else self._bus.pending.model_dump(),
             "limitations": [
-                "Aligned sensor at the body reference; no mount rotation or offset acceleration",
+                "Sensor x follows travel and z follows the surface normal at a constant declared grade; no independent mount rotation or offset acceleration",
                 "Physics endpoints publish ideal samples; no internal MPU sample clock, filter, noise or bias",
                 "Straight-line model has zero angular velocity; temperature is a constant scenario input",
                 "Nonblocking polling skips busy requests; only completed reads reach observers",

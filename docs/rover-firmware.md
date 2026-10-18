@@ -129,6 +129,10 @@ it doesn't use the magnitude of the gravity-bearing three-axis vector. Sonar
 threshold and missing-echo braking remain active as a fallback. This is an example
 policy with assumed limits, not a validated protection system.
 
+On a [declared incline](rover-inclines.md), forward specific force includes
+`g*sin(grade)`. This example doesn't estimate attitude or remove that gravity
+component, so tilt can change its decision even at the same body acceleration.
+
 Its optional callback receives an immutable `IMUObservation`: delivery time,
 sample time, decoded specific-force and angular-velocity tuples, and temperature.
 The host builds this from the completed byte transfer, after range scaling and

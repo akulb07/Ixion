@@ -19,6 +19,7 @@ from .validation import check_project
 TEMPLATE_FILES = (
     "robot.yaml",
     "rover_wall.yaml",
+    "rover_uphill.yaml",
     "rover_feedback_suite.yaml",
     "README.md",
     "LICENSE",
@@ -45,6 +46,7 @@ def create_starter(
     try:
         project = RobotProject.model_validate(yaml.safe_load(payloads["robot.yaml"]))
         RoverBrakeConfig.model_validate(yaml.safe_load(payloads["rover_wall.yaml"]))
+        RoverBrakeConfig.model_validate(yaml.safe_load(payloads["rover_uphill.yaml"]))
         suite = RoverSuiteConfig.model_validate(
             yaml.safe_load(payloads["rover_feedback_suite.yaml"])
         )

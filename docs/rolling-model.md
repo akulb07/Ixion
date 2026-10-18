@@ -22,8 +22,9 @@ force F, angular acceleration alpha and total vehicle mass m:
 
 ```text
 T = J * alpha + F * r
-2 * F = m * r * alpha
+2 * F - m * g * sin(grade) = m * r * alpha
 effective inertia per shaft = J + m * r^2 / 2
+gravity load torque per shaft = m * g * sin(grade) * r / 2
 body acceleration = r * alpha
 ```
 
@@ -33,14 +34,16 @@ The model reuses the shaft integrator with this effective inertia. It advances
 speed, distance and battery charge with explicit Euler. Compare smaller time
 steps when using a new setup; there is no automatic accuracy guarantee.
 
-Normal force is half the specified driven weight per wheel, constant throughout
-the run. Required contact force must stay within `friction * normal force` at
+Normal force is half the specified driven normal load per wheel, including
+`cos(grade)` and constant throughout the run. Required contact force must stay within `friction * normal force` at
 every recorded sample, including the initial state. Exceeding that bound raises
 an error and no complete trace is returned. Force is not clipped: clipping without
 separate wheel-slip dynamics would violate the assumed rolling constraint.
 
-This model covers equal-wheel straight travel on level ground. It does not model
-turning, wheel slip, caster drag, rolling resistance, slopes, load transfer,
+The default grade is zero. Set `--grade-rad 0.08726646259971647` for a 5° uphill
+lane in this example; positive rises along travel. See [incline use and limits](rover-inclines.md).
+This model covers equal-wheel straight travel on a constant grade. It does not model
+turning, wheel slip, caster drag, rolling resistance, changing slopes, load transfer,
 collisions or suspension. Current warnings remain estimates, not protection
 actions.
 

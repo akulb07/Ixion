@@ -83,6 +83,11 @@ It connects both motors to the rover mass and estimates distance and speed on
 level ground. Traction, weight distribution and rotating inertia are assumptions
 you can change. Turning and wheel slip still need work.
 
+The same hardware loop can now run on a [constant uphill grade](docs/rover-inclines.md).
+There's a supplied level/5°/15° suite with motion, current, traction and tilted
+IMU readings. It checks the declared cases, including clearance; keeping the
+rover parked on a slope is still separate work.
+
 Add `--encoder-cycles 20` to get ideal A/B encoder pulses for each wheel as well.
 That assumes 20 cycles per wheel revolution; the [encoder notes](docs/quadrature.md)
 explain the count convention. The example also counts those pulses through logical

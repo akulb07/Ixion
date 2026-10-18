@@ -102,3 +102,27 @@ def test_cli_records_input_byte_fingerprints_and_preserves_sources(tmp_path, rep
     assert baseline.read_bytes() == base_before and candidate.read_bytes() == next_before
     payload = output.read_bytes()
     assert main(args) == 2 and output.read_bytes() == payload
+
+
+def test_older_level_suites_without_grade_fields_remain_semantically_compatible(report):
+    old = deepcopy(report)
+    explicit = deepcopy(report)
+    for case in old["config"]["cases"]:
+        case["scenario"].pop("grade_rad", None)
+    for case in old["cases"]:
+        if case["report"] is not None:
+            case["report"]["config"].pop("grade_rad", None)
+            case["report"]["body"].pop("grade_rad", None)
+    for case in explicit["config"]["cases"]:
+        case["scenario"]["grade_rad"] = 0
+    for case in explicit["cases"]:
+        if case["report"] is not None:
+            case["report"]["config"]["grade_rad"] = 0
+            case["report"]["body"]["grade_rad"] = 0
+    comparison = compare_rover_suites(old, explicit)
+    assert comparison["design_changes"]["total"] == 0
+    assert all(
+        metric["delta"] in (0, None)
+        for case in comparison["cases"]
+        for metric in case["metrics"].values()
+    )

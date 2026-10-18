@@ -57,6 +57,7 @@ function setup(comparison = false) {
   if(comparison === 'bench-check') {
     evidence.bench_acceptance={status:'fail',source_kind:'synthetic',policy:{name:'expected measured data'},coverage:{},limitations:[],checks:[{name:'declared_source_kind',status:'fail',actual:'synthetic',expected:'measured',unit:''},{name:'speed_m_s.maximum_rmse',status:'inconclusive',actual:null,expected:0.01,unit:'m/s'}]};
   }
+  if(comparison === 'grade') evidence.cases[0].run.grade_rad=Math.PI/36;
   const context=vm.createContext({document});
   vm.runInContext('const ROVER_EVIDENCE = '+JSON.stringify(evidence)+';\n'+script, context, {timeout:1000});
   get.evaluate=expression=>vm.runInContext(expression,context,{timeout:1000});
@@ -70,6 +71,12 @@ test('initialization builds charts and renders report labels as text', () => {
   assert.equal(get('cases').children.length, 2);
   assert.equal(get('sample-index').textContent, '1 / 3 samples');
   assert.equal(get('checks').children[0].children[1].children.at(-1).textContent, 'FAIL');
+});
+test('uphill evidence labels the grade, lane coordinates and hill-holding limit', () => {
+  const get=setup('grade');
+  assert.match(get('fixture-scope').textContent,/5\.000° uphill/);
+  assert.match(get('fixture-scope').textContent,/distances along the lane/);
+  assert.match(get('fixture-scope').textContent,/does not establish hill holding/);
 });
 test('large plot envelopes retain single-sample peaks, valleys, endpoints and original time order', () => {
   const get=setup();

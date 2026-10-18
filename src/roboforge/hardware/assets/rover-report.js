@@ -155,6 +155,8 @@ function selectCase(index) {
   showComparison(selected);
   showBench();
   if(!active) return;
+  const grade=active.grade_rad ?? 0;
+  el("fixture-scope").textContent=grade === 0 ? "FIXTURE · level straight travel · distances along the lane" : `FIXTURE · ${fmt(grade*180/Math.PI,"°",3)} uphill · distances along the lane · stop threshold does not establish hill holding`;
   el("metrics").replaceChildren(...[
     ["FINAL CLEARANCE",fmt(active.metrics.final_front_clearance_m," m")],
     ["BRAKE COMMAND",fmt(active.metrics.brake_command_time_s," s")],

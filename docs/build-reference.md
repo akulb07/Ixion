@@ -54,6 +54,11 @@ limited to 2 MiB, and total uncompressed content to 8 MiB. Current packets conta
 using the installed exporter format; incompatible future format changes need a
 new manifest version.
 
+Level-only packets retain manifest version 1 and its scenario encoding. Packets
+including a [graded suite](rover-inclines.md) use version 2 so the new physical
+condition can't be mistaken for a level case by an older verifier. The current
+verifier supports both versions.
+
 Checksums detect changed contents but don't authenticate who made the packet.
 Verification doesn't establish engineering readiness. Declared part metadata and
 evidence labels are not independently verified. The reference still has assumed

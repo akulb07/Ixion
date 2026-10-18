@@ -1,6 +1,8 @@
-"""Symmetric straight-line rolling on level ground, with a traction validity check."""
+"""Symmetric straight-line rolling on a constant grade, with a traction check."""
 
-from pydantic import Field
+import math
+
+from pydantic import Field, model_serializer
 
 from roboforge.config import Nonnegative, Positive, Probability, Real, Schema
 from roboforge.core import finite, positive
@@ -17,6 +19,14 @@ class RollingBody(Schema):
     friction_coefficient: Nonnegative
     driven_weight_fraction: Probability = Field(gt=0)
     gravity_m_s2: Positive = 9.80665
+    grade_rad: Real = Field(default=0, gt=-math.pi / 2, lt=math.pi / 2)
+
+    @model_serializer(mode="wrap")
+    def preserve_level_encoding(self, handler):
+        data = handler(self)
+        if self.grade_rad == 0:
+            data.pop("grade_rad", None)
+        return data
 
 
 class RollingSample(Schema):
@@ -43,17 +53,32 @@ def rolling_inertia(body: RollingBody) -> float:
     )
 
 
+def grade_force_n(body: RollingBody) -> float:
+    """Gravity opposing positive travel; a positive grade rises along the lane."""
+    return finite(body.total_mass_kg * body.gravity_m_s2 * math.sin(body.grade_rad), "grade force")
+
+
+def rolling_load(body: RollingBody) -> ShaftLoad:
+    return ShaftLoad(
+        inertia_kg_m2=rolling_inertia(body),
+        load_torque_nm=finite(grade_force_n(body) * body.wheel_radius_m / 2, "grade torque"),
+    )
+
+
 def rolling_sample(body: RollingBody, sample: ShaftSample) -> RollingSample:
     limit = finite(
         body.friction_coefficient
         * body.total_mass_kg
         * body.gravity_m_s2
+        * math.cos(body.grade_rad)
         * body.driven_weight_fraction
         / 2,
         "traction limit",
     )
     acceleration = finite(body.wheel_radius_m * sample.acceleration_rad_s2[0], "body acceleration")
-    force = finite(body.total_mass_kg * acceleration / 2, "wheel contact force")
+    force = finite(
+        (body.total_mass_kg * acceleration + grade_force_n(body)) / 2, "wheel contact force"
+    )
     if abs(force) > limit:
         raise ValueError(
             f"traction exceeded at {sample.time_s:g} s: requires {abs(force):g} N "
@@ -81,7 +106,9 @@ def run_rolling_bench(
     """Integrate two identical channels under a no-slip straight-line constraint.
 
     Weight on the driven wheels is supplied explicitly and shared equally. Caster
-    drag, load transfer, incline, turning and slip dynamics are not modeled.
+    drag, load transfer, turning and slip dynamics are not modeled. Constant
+    grade contributes gravity load and reduces normal force. Distance is along
+    the lane, not its horizontal projection.
     Distance starts at zero. Commands and initial speed come from the channels.
     """
     if len(system.channels) != 2 or system.channels[0] != system.channels[1]:
@@ -89,7 +116,7 @@ def run_rolling_bench(
     trace = run_shaft_bench(
         system,
         state,
-        (ShaftLoad(inertia_kg_m2=rolling_inertia(body)),) * 2,
+        (rolling_load(body),) * 2,
         duration_s,
         step_s,
         vcc_v,

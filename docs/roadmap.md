@@ -149,6 +149,15 @@ and maxima so brief recorded extrema survive the display reduction. Smaller
 oscillations and peaks between saved samples remain unknown. Broader replay controls,
 browser validation and integrated hardware workspace editing remain ahead.
 
+A first [constant-grade rover extension](rover-inclines.md) now adds gravity load,
+inclined traction and body-frame IMU gravity to the existing closed loop. Level,
+5° and 15° cases retain independent conditions and clearance checks. Unsupported
+rollback is reported explicitly, and reaching the small positive stop threshold
+doesn't establish hill holding. Level report/export encodings stay compatible;
+uphill reports and grade-aware build packets have explicit versions. This extends
+partial Phases B–E; changing terrain, load transfer, wheel slip, turning and
+physical incline measurements remain open.
+
 ## What would make this worth using
 
 The goal is to catch an expensive design mistake before buying parts. A long

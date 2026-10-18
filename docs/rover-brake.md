@@ -24,6 +24,10 @@ their control pins, wheels and mounted encoders. Both motor connections must hav
 positive lead polarity. The rolling model rejects traction demands outside its
 no-slip validity bound; turning, slipping wheels and unequal motors are unsupported.
 
+An optional constant uphill `grade_rad` now adds gravity loading, inclined traction
+and body-frame IMU gravity. Distances follow the lane. See the
+[incline scenarios and stopping limits](rover-inclines.md); zero grade remains the default.
+
 The scenario specifies a perpendicular wall and two offsets from the starting
 body reference: `front_offset_m` is the rover's front boundary, and
 `sensor_offset_m` locates the sensor. The sensor must sit at or behind the front,
