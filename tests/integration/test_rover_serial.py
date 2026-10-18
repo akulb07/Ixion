@@ -23,7 +23,7 @@ def report(model, scenario):
 
 
 def test_shared_console_records_delivered_controller_and_sensor_events(report, scenario):
-    assert report["schema_version"] == 6 and report["status"] == "stopped_before_wall"
+    assert report["schema_version"] == 7 and report["status"] == "stopped_before_wall"
     serial = report["serial"]
     assert serial["dropped_writes"] == []
     messages = [json.loads(t["text"]) for t in serial["completed"]]

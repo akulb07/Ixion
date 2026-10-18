@@ -120,8 +120,48 @@ def main(argv: list[str] | None = None) -> int:
     rover.add_argument("project", type=Path)
     rover.add_argument("scenario", type=Path)
     rover.add_argument("--output", type=Path, required=True)
+    rover_suite = subparsers.add_parser(
+        "rover-suite", help="Run repeatable rover cases against declared acceptance checks"
+    )
+    rover_suite.add_argument("project", type=Path)
+    rover_suite.add_argument("suite", type=Path)
+    rover_suite.add_argument("--output", type=Path, required=True)
+    rover_report = subparsers.add_parser(
+        "rover-report", help="Create an offline timeline viewer from saved rover JSON"
+    )
+    rover_report.add_argument("report", type=Path)
+    rover_report.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "rover-report":
+            from roboforge.hardware.rover_report import load_rover_evidence, render_rover_evidence
+
+            if args.output.exists():
+                raise ValueError("rover report output already exists; choose a new path")
+            report, digest = load_rover_evidence(args.report)
+            html = render_rover_evidence(report, digest)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(html)
+            print(f"Saved offline rover viewer to {args.output}")
+            return 0
+        if args.command == "rover-suite":
+            import json
+
+            from roboforge.hardware import load_project
+            from roboforge.hardware.rover_suite import load_rover_suite, run_rover_suite
+
+            if args.output.exists():
+                raise ValueError("rover suite output already exists; choose a new path")
+            result = run_rover_suite(load_project(args.project), load_rover_suite(args.suite))
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            summary = result["summary"]
+            print(
+                f"{result['status']}: {summary['passed']}/{summary['total']} cases passed; "
+                f"{summary['failed']} failed, {summary['error']} errors; saved to {args.output}"
+            )
+            return 0 if result["status"] == "passed" else 3
         if args.command == "rover-brake":
             import json
 

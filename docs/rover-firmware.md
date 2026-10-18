@@ -49,7 +49,8 @@ at the next control tick. IMU callbacks follow the same rule. Reports retain bot
 times and their difference.
 
 `inputs` is an immutable `FirmwareInputs` frame containing simulation time and the
-two decoded encoder counts. `observation` is an immutable `RangeObservation` with
+two encoder counter readings. Optional [counter-read faults](encoder-faults.md)
+can alter those readings after GPIO decoding. `observation` is an immutable `RangeObservation` with
 delivery time, status and measured distance. A timeout has no distance. Neither
 frame includes the wall position, actual travel, motor state or the fixture's true
 range. Range is still decoded by the host from the project-wired echo pulse.
@@ -197,7 +198,7 @@ queue feedback; use the saved report to inspect accepted and rejected counts.
 
 ## Reports and limits
 
-Rover reports use schema version 6, with a `firmware` block containing interface version,
+Rover reports use schema version 7, with a `firmware` block containing interface version,
 qualified Python class name, execution mode, latched request, delivery time and
 current command. Controllers based on Ixion's `Schema` also save their parameter
 fields, as the encoder example does. Other Python objects report `parameters: null`;
@@ -222,6 +223,11 @@ later control boundary still reflects the interval that just ended. Reports also
 keep drive request/application counts, ignored requests after braking and any
 pending duty request at run end. A newer request can supersede an earlier one
 before either is applied.
+
+Motion samples and decisions now distinguish firmware-observed `encoder_counts`
+from underlying `decoded_encoder_counts`. `encoder_feedback` records the optional
+injected faults. These additional report fields aren't hidden firmware inputs.
+The speed controller's separate report saves configured checks and trip evidence.
 
 The serial `drive_pwm` event records actual duty changes, with request and command
 times. Unchanged duty doesn't generate another change event. In brake mode PWM

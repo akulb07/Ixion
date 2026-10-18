@@ -1,0 +1,90 @@
+# Same reference rover, with normal feedback and three bad-counter cases.
+schema_version: 1
+name: rover_feedback_checks
+cases:
+  - name: normal
+    scenario:
+      wall_distance_m: 1
+      front_offset_m: 0.1
+      sensor_offset_m: 0.08
+      rotating_inertia_per_wheel_kg_m2: 0.002
+      friction_coefficient: 0.8
+      driven_weight_fraction: 0.8
+      sensor:
+        response_delay_s: 0.0002
+      duration_s: 4
+      step_s: 0.001
+      poll_every_steps: 61
+      control_every_steps: 20
+      brake_threshold_m: 0.6
+    acceptance:
+      expected_brake_reason: obstacle
+      minimum_front_clearance_m: 0.4
+      maximum_peak_pack_current_a: 0.5
+  - name: left_counter_freeze
+    scenario:
+      wall_distance_m: 1
+      front_offset_m: 0.1
+      sensor_offset_m: 0.08
+      rotating_inertia_per_wheel_kg_m2: 0.002
+      friction_coefficient: 0.8
+      driven_weight_fraction: 0.8
+      sensor:
+        response_delay_s: 0.0002
+      duration_s: 4
+      step_s: 0.001
+      control_every_steps: 20
+      brake_threshold_m: 0.6
+      encoder_faults:
+        - channel: left
+          start_time_s: 0.8
+    acceptance:
+      expected_brake_reason: encoder_disagreement
+      minimum_front_clearance_m: 0.7
+      maximum_fault_detection_delay_s: 0.15
+  - name: both_counters_freeze
+    scenario:
+      wall_distance_m: 1
+      front_offset_m: 0.1
+      sensor_offset_m: 0.08
+      rotating_inertia_per_wheel_kg_m2: 0.002
+      friction_coefficient: 0.8
+      driven_weight_fraction: 0.8
+      sensor:
+        response_delay_s: 0.0002
+      duration_s: 4
+      step_s: 0.001
+      control_every_steps: 20
+      brake_threshold_m: 0.6
+      encoder_faults:
+        - channel: left
+          start_time_s: 0.8
+        - channel: right
+          start_time_s: 0.8
+    acceptance:
+      expected_brake_reason: encoder_no_progress
+      minimum_front_clearance_m: 0.7
+      maximum_fault_detection_delay_s: 0.25
+  - name: left_counter_jump
+    scenario:
+      wall_distance_m: 1
+      front_offset_m: 0.1
+      sensor_offset_m: 0.08
+      rotating_inertia_per_wheel_kg_m2: 0.002
+      friction_coefficient: 0.8
+      driven_weight_fraction: 0.8
+      sensor:
+        response_delay_s: 0.0002
+      duration_s: 4
+      step_s: 0.001
+      control_every_steps: 20
+      brake_threshold_m: 0.6
+      encoder_faults:
+        - channel: left
+          start_time_s: 0.8
+          kind: offset
+          offset_counts: 10000
+    acceptance:
+      expected_brake_reason: encoder_speed_implausible
+      minimum_front_clearance_m: 0.7
+      maximum_fault_detection_delay_s: 0.02

@@ -13,6 +13,11 @@ PWM. Sonar still requests braking for the wall or a missing echo. Once that
 request latches, the controller stops updating power and freezes its integral
 while continuing to record wheel-speed observations.
 
+The example also enables [feedback checks](encoder-faults.md) for reverse counts,
+implausible wheel speed, persistent zero counts and persistent wheel disagreement.
+It can inject counter freezes and jumps to exercise those paths. The Python
+controller class enables these only when `encoder_health` is configured.
+
 The default reference run stops before the wall. Other targets, gains or parts
 can leave the response unfinished or fail the model's limits. `--seconds` sets
 the horizon; it doesn't guarantee that the rover finishes within it. The example
@@ -75,10 +80,12 @@ limitation in mind, and compare smaller physics steps and physical measurements.
 ## Saved evidence
 
 The example adds a `speed_control` block to the normal rover report. That block
-has its own schema version 1 and contains controller configuration and samples:
+has its own schema version 2 and contains controller configuration and samples:
 time, ramped target, count-window observation, requested PWM, accumulated error,
-limit flag and braking state. This extension is added by the example; ordinary
-`run_rover_brake` reports retain their existing schema version 6. API callers can
+limit flag, braking state and latched feedback-fault reason. `encoder_health`
+records the first fault evidence, or the absence of a trip. This extension is
+added by the example; ordinary `run_rover_brake` reports use schema version 7,
+including observed and underlying decoded counts plus counter-fault metadata. API callers can
 obtain the same controller data from `controller.report()`.
 
 The controller trace records requested power. Compare it with `control_decisions`

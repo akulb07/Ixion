@@ -98,3 +98,35 @@ def test_invalid_fixture_is_rejected(changes, message):
 def test_missing_scenario_is_a_validation_error(tmp_path):
     with pytest.raises(ValueError, match="Invalid rover scenario"):
         load_rover_scenario(tmp_path / "missing.yaml")
+
+
+@pytest.mark.parametrize(
+    "faults",
+    [
+        [{"channel": "left", "start_time_s": 0}] * 2,
+        [{"channel": "left", "start_time_s": 5}],
+        [{"channel": "right", "start_time_s": -1}],
+        [{"channel": "left", "start_time_s": 0, "kind": "offset", "offset_counts": 0}],
+    ],
+)
+def test_invalid_encoder_faults_are_rejected_before_running(faults):
+    data = load_rover_scenario(REFERENCE.with_name("rover_wall.yaml")).model_dump()
+    with pytest.raises(ValueError):
+        RoverBrakeConfig.model_validate({**data, "encoder_faults": faults})
+
+
+def test_cli_loads_counter_fault_from_scenario_and_saves_both_count_layers(tmp_path):
+    config = load_rover_scenario(REFERENCE.with_name("rover_wall.yaml"))
+    data = {
+        **config.model_dump(),
+        "duration_s": 0.1,
+        "encoder_faults": [{"channel": "left", "start_time_s": 0.05}],
+    }
+    source, output = tmp_path / "fault.json", tmp_path / "result.json"
+    source.write_text(json.dumps(data))
+    assert main(["rover-brake", str(REFERENCE), str(source), "--output", str(output)]) == 3
+    result = json.loads(output.read_text())
+    assert result["schema_version"] == 7
+    assert result["encoder_feedback"]["activations"][0]["time_s"] == 0.05
+    final = result["samples"][-1]
+    assert final["encoder_counts"]["left"] < final["decoded_encoder_counts"]["left"]

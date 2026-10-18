@@ -167,6 +167,11 @@ loop does not replace validation against a physical reference robot.
    PI/feedforward gains, duty bounds, slew limits and conditional anti-windup.
    Sonar braking freezes its integral and stops further drive requests. A saved
    controller trace distinguishes target, observed speed and requested duty.
+   Optional [encoder feedback checks](encoder-faults.md) now latch a brake from
+   reverse counts, excessive estimated speed, persistent no-progress or wheel
+   disagreement. Counter-read freeze/offset injection leaves GPIO decoding and
+   physical motion intact; saved reports keep both count layers and trip evidence.
+   These checks don't diagnose the physical cause or provide recovery.
    Calibration, stability across parts and real-board execution remain pending.
 6. **E:** Headless obstacle-response demo: firmware changes PWM after observing an
    echo, with encoder and power telemetry and repeatable integration tests.

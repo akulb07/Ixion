@@ -7,8 +7,15 @@ from pydantic import Field, PrivateAttr, model_validator
 from roboforge.config import Nonnegative, Positive, Probability, Real, Schema
 from roboforge.core import finite
 
+from .encoder_health import (
+    EncoderFeedbackFault,
+    EncoderFeedbackGuard,
+    EncoderHealthConfig,
+    FeedbackFaultCode,
+)
 from .encoder_speed import EncoderSpeedConfig, EncoderSpeedEstimator, EncoderSpeedObservation
 from .rover_firmware import (
+    BrakeRequest,
     DriveRequest,
     FirmwareInputs,
     FirmwareLog,
@@ -25,10 +32,12 @@ class SpeedControlSample(Schema):
     integral_error_m: Real = 0
     limited: bool = False
     braking: bool = False
+    feedback_fault_reason: FeedbackFaultCode | None = None
 
 
 class EncoderSpeedFirmware(ObstacleBrakeFirmware):
     encoder: EncoderSpeedConfig
+    encoder_health: EncoderHealthConfig | None = None
     target_speed_m_s: Positive = 0.2
     target_ramp_s: Positive = 1
     proportional_gain_s_m: Nonnegative = 1
@@ -45,6 +54,8 @@ class EncoderSpeedFirmware(ObstacleBrakeFirmware):
     _duty: float = PrivateAttr(default=0)
     _braking: bool = PrivateAttr(default=False)
     _trace: list[SpeedControlSample] = PrivateAttr(default_factory=list)
+    _guard: EncoderFeedbackGuard | None = PrivateAttr(default=None)
+    _feedback_fault: EncoderFeedbackFault | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def check_bounds(self):
@@ -80,6 +91,14 @@ class EncoderSpeedFirmware(ObstacleBrakeFirmware):
         observed = self._estimator.update(inputs)
         if observed is None:
             return None
+        detected = None
+        if not self._braking and self.encoder_health is not None:
+            if self._guard is None:
+                self._guard = EncoderFeedbackGuard(self.encoder_health)
+            detected = self._guard.observe(observed, target, self._duty)
+            if detected is not None:
+                self._feedback_fault = detected
+                self._braking = True
         limited = False
         if not self._braking:
             error = finite(target - observed.mean_speed_m_s, "speed error")
@@ -108,8 +127,21 @@ class EncoderSpeedFirmware(ObstacleBrakeFirmware):
                 integral_error_m=self._integral,
                 limited=limited,
                 braking=self._braking,
+                feedback_fault_reason=None
+                if self._feedback_fault is None
+                else self._feedback_fault.code,
             )
         )
+        if detected is not None:
+            return FirmwareResponse(
+                brake_request=BrakeRequest(reason=detected.code),
+                logs=(
+                    FirmwareLog(
+                        level="error",
+                        text=f"Braking requested: {detected.code}; wheels {', '.join(detected.wheels)}",
+                    ),
+                ),
+            )
         if self._braking:
             return None
         logs = ()
@@ -133,9 +165,16 @@ class EncoderSpeedFirmware(ObstacleBrakeFirmware):
             and sample.time_s >= self.target_ramp_s
         ]
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "config": self.model_dump(mode="json"),
             "samples": [sample.model_dump(mode="json") for sample in self._trace],
+            "encoder_health": None
+            if self.encoder_health is None
+            else {
+                "fault": None
+                if self._feedback_fault is None
+                else self._feedback_fault.model_dump(mode="json")
+            },
             "metrics": {
                 "post_ramp_observation_count": len(tracking),
                 "post_ramp_tracking_rmse_m_s": None
@@ -154,5 +193,6 @@ class EncoderSpeedFirmware(ObstacleBrakeFirmware):
                 "Positive PWM bounds can cause creep; no zero-speed hold, reverse, turning or restart",
                 "Duty limits and anti-windup don't guarantee stability or prevent regeneration on other models",
                 "Fresh controller instance required for each experiment",
+                "Optional feedback rules cannot distinguish an encoder fault from a mechanical stall or other cause",
             ],
         }

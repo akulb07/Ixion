@@ -17,11 +17,16 @@ Exit codes: 0 means no errors in the implemented topology rules; 3 means design
 diagnostics contain errors; 2 means invalid input. A warning always identifies the
 unimplemented engineering checks. Zero is not approval to purchase or wire hardware.
 
-This is a netlist fixture, not the closed-loop demo yet. There is no firmware,
-register interface or physics backend attached. The `motor-point` command can
-evaluate the motor parameters at a prescribed speed, but does not run the robot.
-The generic motor values
-are assumed. Regulator and echo interface entries are placeholders requiring real
+The `inspect-project` command checks the netlist. The separate
+[wall-brake demo](../../docs/rover-brake.md) connects the reference to straight-line
+physics, encoder GPIO, sonar and optional I2C IMU and serial output. Host Python
+controllers can change equal forward PWM and request a latched brake; this doesn't
+execute ESP32 binaries. The [speed demo](../../docs/encoder-speed.md) adds count
+feedback, with [counter fault cases](../../docs/encoder-faults.md) for checking
+controller responses. The `motor-point` command still evaluates just a prescribed
+operating point.
+
+The generic motor values are assumed. Regulator and echo interface entries are placeholders requiring real
 part selection. I2C pull-ups and board-specific wiring have not been validated.
 
 See [the architecture plan](../../docs/hardware-architecture.md) for the model

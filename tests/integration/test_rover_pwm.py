@@ -88,7 +88,7 @@ def test_ramp_example_changes_both_pwm_channels_and_cannot_override_sonar_brakin
 ):
     config = scenario.model_copy(update={"control_every_steps": 20})
     result = run_rover_brake(model, config, firmware=ramp_type(brake_threshold_m=0.6))
-    assert result["schema_version"] == 6 and result["status"] == "stopped_before_wall"
+    assert result["schema_version"] == 7 and result["status"] == "stopped_before_wall"
     assert result["brake_reason"] == "obstacle"
     drive = [d for d in result["control_decisions"] if d["command"] == "drive"]
     assert drive[0]["pwm_duty"] == 0.25 and drive[-1]["pwm_duty"] == 1

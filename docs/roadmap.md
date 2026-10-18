@@ -88,8 +88,31 @@ A [reference encoder speed loop](encoder-speed.md) now regulates equal forward
 PWM from delivered count-window estimates. Its PI/feedforward settings, bounds,
 rate limit and anti-windup are explicit configuration. The demo records target,
 measured speed and power requests, and retains sonar braking. This is further
-partial Phase D/E work; physical tuning, broader mechanics, fault handling and
+partial Phase D/E work; physical tuning, broader mechanics, broader fault handling and
 general firmware scheduling remain ahead.
+
+The reference speed loop now also has optional [encoder feedback checks](encoder-faults.md).
+Bounded counter-read freezes and offsets run on the shared clock, while raw GPIO
+decoding and physics continue. The controller brakes from observed reverse counts,
+implausible speed, persistent no-progress or wheel disagreement. Reports preserve
+raw versus observed counts and the first trip's evidence. This extends partial
+Phases D/E; electrical sensor failures, recovery, general fault diagnosis and
+physical validation remain ahead.
+
+A bounded [rover acceptance suite](rover-suite.md) now repeats independently
+initialized normal/fault cases against declared outcomes, clearance, sampled peak
+current and feedback-trip delay. It preserves full run evidence and individual
+check results, continues after a model error, and returns an overall failure for
+failed checks or error cases. This starts the repeatable hardware regression
+workflow in partial Phases E/F; cross-project comparisons, general scenarios and
+physical acceptance limits remain ahead.
+
+A first [offline rover evidence viewer](rover-viewer.md) now links recorded
+motion, observed/raw counts, driver duty, pack current and sensor/control/serial
+events with one time cursor. It accepts individual runs and suites, preserves
+failed-check evidence and never reruns physics. This is an initial debugging
+artifact, separate from the main IDE; broader replay controls, exact peak-preserving
+plots, browser validation and integrated hardware workspace editing remain ahead.
 
 ## What would make this worth using
 

@@ -82,12 +82,19 @@ model bounds, not ESP32 or interface ratings.
 
 Accepted writes each reserve one completion callback within the shared clock's
 200,000-event limit. A failed reservation leaves the console queue unchanged.
-Reports use schema version 6, retaining the previous motion, GPIO and I2C fields;
+Reports use schema version 7, retaining the previous motion, GPIO and I2C fields;
 `serial` is `null` when logging is disabled.
 
 `drive_pwm` messages mark applied forward-duty changes. They include the source
 request time as well as command time. Unchanged duty generates no extra change
 event, while repeated control decisions remain available in the normal report.
+
+Optional [encoder counter faults](encoder-faults.md) submit `encoder_counter_fault`
+events at activation, including the channel, kind, offset and decoded count at
+that instant. The speed controller submits an error-level `firmware_log` when a
+feedback check requests braking. Both use the same bounded queue; persistent
+fault and brake evidence also remains in the normal report. Count fields in
+console status and brake messages are the readings delivered to firmware.
 
 This is a logical debug console. It does not open a physical serial port, execute
 UART pin wiring, emulate USB, or model CPU formatting/transmit overhead. Firmware

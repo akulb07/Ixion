@@ -154,6 +154,36 @@ target. Sonar still handles braking. The saved report includes target versus
 measured speed and power requests. The gains are example settings, not tuned
 values for a real rover.
 
+You can try breaking the feedback too:
+
+```sh
+python examples/esp32_diff_drive/rover_speed_firmware.py --encoder-fault both-freeze --output frozen-counts.json
+```
+
+This freezes the count readings at 0.8 seconds while the simulated wheels keep
+moving. The controller notices the lack of progress and brakes. There are also
+one-wheel freeze and count-jump cases. The [fault notes](docs/encoder-faults.md)
+explain what gets changed and what the checks can miss.
+
+To repeat the normal run and all three fault cases together:
+
+```sh
+ixion rover-suite examples/esp32_diff_drive/robot.yaml examples/esp32_diff_drive/rover_feedback_suite.yaml --output rover-suite.json
+```
+
+The [suite](docs/rover-suite.md) checks the expected brake reason, clearance and
+fault response time, then saves every run and check result in one file.
+
+To look through that file in a browser:
+
+```sh
+ixion rover-report rover-suite.json --output rover-suite.html
+```
+
+The [offline viewer](docs/rover-viewer.md) puts speed, counter readings, PWM and
+current on a shared timeline. Click a fault or brake event to inspect what was
+recorded at that time. It reads the saved report without rerunning the rover.
+
 There's a first [I2C IMU fixture](docs/imu-i2c.md) now too:
 
 ```sh

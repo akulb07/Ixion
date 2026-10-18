@@ -1,5 +1,6 @@
 import pytest
 
+from roboforge.hardware.encoder_health import EncoderHealthConfig
 from roboforge.hardware.encoder_speed import EncoderSpeedConfig
 from roboforge.hardware.rover_firmware import FirmwareInputs, RangeObservation
 from roboforge.hardware.speed_firmware import EncoderSpeedFirmware
@@ -68,6 +69,35 @@ def test_partial_window_holds_output_and_fresh_instances_keep_separate_state():
     copied = first.report()
     copied["samples"].clear()
     assert len(first.report()["samples"]) == 1
+
+
+def test_feedback_trip_cancels_pi_update_and_returns_one_brake_with_evidence():
+    controller = program(encoder_health=EncoderHealthConfig(), initial_pwm_duty=0.25)
+    controller.on_tick(frame(0))
+    controller.on_tick(frame(0.02, 1))
+    integral = controller.report()["samples"][-1]["integral_error_m"]
+    result = controller.on_tick(frame(0.04, 10_000))
+    assert result.brake_request.reason == "encoder_speed_implausible"
+    assert result.drive_request is None and result.logs[0].level == "error"
+    assert controller.on_tick(frame(0.06, 10_001)) is None
+    report = controller.report()
+    assert report["schema_version"] == 2
+    assert report["encoder_health"]["fault"]["observation"]["count_delta"] == [9999, 9999]
+    assert report["samples"][-1]["feedback_fault_reason"] == "encoder_speed_implausible"
+    assert all(s["integral_error_m"] == integral for s in report["samples"][2:])
+    report["encoder_health"]["fault"]["wheels"].clear()
+    assert controller.report()["encoder_health"]["fault"]["wheels"] == ["left", "right"]
+
+
+def test_sonar_brake_keeps_priority_over_later_bad_encoder_readings():
+    controller = program(encoder_health=EncoderHealthConfig())
+    controller.on_tick(frame(0))
+    assert (
+        controller.on_range(RangeObservation(time_s=0.01, status="timeout"), frame(0.01)).reason
+        == "echo_timeout"
+    )
+    assert controller.on_tick(frame(0.02, 10_000)) is None
+    assert controller.report()["encoder_health"]["fault"] is None
 
 
 @pytest.mark.parametrize(

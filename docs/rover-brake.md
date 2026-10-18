@@ -82,13 +82,20 @@ detection and command times, response delay, distance travelled after braking,
 final clearance/speed, terminal energy and peak sampled pack current. Energy and
 current figures inherit the shared powertrain model's assumptions.
 
-Report schema version 6 retains `ultrasonic_wiring`, `ultrasonic_pin_events` and
+Report schema version 7 retains `ultrasonic_wiring`, `ultrasonic_pin_events` and
 sampled trigger/echo levels. The event list records the delivered MCU pin changes
 with exact simulation timestamps; it does not invent edges beyond the run end.
 A valid completed trigger starts a pending measurement. A run ending while TRIG
 is still high records that level without fabricating a reading or timeout.
 It retains physical acceleration samples and an optional `imu` report block;
 it is `null` when the scenario omits IMU polling.
+
+Optional [counter-read faults](encoder-faults.md) can freeze a wheel's delivered
+count or add an offset at a scheduled time. `encoder_feedback` records requested
+faults and activations. `encoder_counts` in samples and decisions are the observed
+readings; `decoded_encoder_counts` preserve the underlying GPIO decoder. With no
+faults these agree. The normal sonar-only controller doesn't act on count faults;
+the separate speed controller has optional plausibility checks.
 
 The third scenario reads the [body-coupled IMU](imu-i2c.md#reading-while-the-rover-moves)
 while the rover approaches the wall. Its explicit aligned mount and constant

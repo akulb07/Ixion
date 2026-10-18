@@ -22,7 +22,7 @@ def report(model, scenario):
 
 def test_rover_initializes_imu_over_project_bus_and_delivers_completed_reads(report):
     imu = report["imu"]
-    assert report["status"] == "stopped_before_wall" and report["schema_version"] == 6
+    assert report["status"] == "stopped_before_wall" and report["schema_version"] == 7
     assert imu["wiring"]["sda_pin"] == "GPIO21" and imu["wiring"]["scl_pin"] == "GPIO22"
     assert imu["ready_time_s"] == pytest.approx(0.00099)
     initial = imu["completed_transfers"][:3]

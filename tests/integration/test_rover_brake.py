@@ -198,7 +198,7 @@ def test_minimum_accepted_poll_period_runs_on_integer_control_ticks(model, scena
 
 
 def test_rover_records_actual_trigger_and_echo_edges_on_project_pins(stopped, scenario):
-    assert stopped["schema_version"] == 6
+    assert stopped["schema_version"] == 7
     wiring = stopped["ultrasonic_wiring"]
     assert wiring["trigger_pin"] == "GPIO16" and wiring["echo_pin"] == "GPIO17"
     assert wiring["echo_nets"] == ("echo_high", "echo_low")
