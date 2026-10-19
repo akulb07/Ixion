@@ -158,6 +158,14 @@ uphill reports and grade-aware build packets have explicit versions. This extend
 partial Phases B–E; changing terrain, load transfer, wheel slip, turning and
 physical incline measurements remain open.
 
+A first [inverse rover sizing check](rover-sizing.md) now works backward from
+forward speed, acceleration, constant grade and SOC to wheel torque, motor current
+and shared-battery PWM demand. It screens traction, controller duty, supply bounds
+and known current references, preserves failed demands, and leaves missing ratings
+unassessed. The installed starter includes a sizing input. This extends partial
+Phases B/F/G; it doesn't establish a startup trajectory, thermal capability,
+mission runtime, static hill holding or physical accuracy.
+
 ## What would make this worth using
 
 The goal is to catch an expensive design mistake before buying parts. A long

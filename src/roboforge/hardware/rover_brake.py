@@ -17,7 +17,7 @@ from .board_outputs import TB6612BoardOutputs
 from .board_ultrasonic import UltrasonicBoardIO, resolve_ultrasonic_wiring
 from .encoder_faults import EncoderCounterReads, EncoderCountFault
 from .motor import MotorDatasheet
-from .motor_wiring import resolve_motor_connection
+from .motor_wiring import resolve_motor_connection, resolve_rover_wheels
 from .mounted_encoder import resolve_mounted_encoder
 from .powertrain import MotorChannel, Powertrain
 from .project import Identifier, RobotProject
@@ -113,22 +113,6 @@ def load_rover_scenario(path: str | Path) -> RoverBrakeConfig:
         raise ValueError(f"Invalid rover scenario {path}: {exc}") from exc
 
 
-def _wheel_links(project, motors):
-    parts = {c.id: c for c in project.components}
-    wheels = []
-    for motor in motors:
-        links = [p for p in project.assembly.links if p.source == motor and p.kind == "shaft"]
-        if len(links) != 1 or parts[links[0].target].category != "wheel":
-            raise ValueError("each rover motor requires exactly one shaft link to a wheel")
-        wheel = links[0].target
-        if sum(p.target == wheel and p.kind == "shaft" for p in project.assembly.links) != 1:
-            raise ValueError("each rover wheel must have exactly one driving shaft")
-        wheels.append(wheel)
-    if len(set(wheels)) != 2:
-        raise ValueError("rover motors must drive distinct wheels")
-    return wheels
-
-
 def _schedule_encoders(clock, mounted, pin_map, result):
     events = []
     for index, name in enumerate(("left", "right")):
@@ -182,7 +166,7 @@ def run_rover_brake(
         ),
     )
     motors = (config.left_motor, config.right_motor)
-    wheels = _wheel_links(project, motors)
+    wheels = resolve_rover_wheels(project, motors)
     connections = tuple(resolve_motor_connection(project, m) for m in motors)
     if connections[0].driver != connections[1].driver or {c.channel for c in connections} != {
         "A",

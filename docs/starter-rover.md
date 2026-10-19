@@ -26,6 +26,8 @@ The starter contains:
 - `rover_wall.yaml`: the first fixed-wall brake experiment.
 - `rover_uphill.yaml`: a constant 5° uphill case with body-coupled IMU readings;
   see the [incline limits](rover-inclines.md).
+- `rover_sizing.yaml`: a prescribed speed, acceleration, grade and SOC for the
+  [inverse motor/battery sizing check](rover-sizing.md).
 - `rover_feedback_suite.yaml`: normal feedback, left/both counter freeze and
   a counter-jump case, with declared simulation checks.
 - `README.md`, `.gitignore` and the original MIT license for the template.
@@ -42,6 +44,7 @@ For example, from the new folder:
 
 ```sh
 ixion inspect-project robot.yaml
+ixion rover-size robot.yaml rover_sizing.yaml --output sizing.json
 ixion rover-brake robot.yaml rover_wall.yaml --output wall-run.json
 ixion rover-report wall-run.json --output wall-run.html
 ixion build-reference robot.yaml --suite rover_feedback_suite.yaml --case normal --output build-reference.zip

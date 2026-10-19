@@ -31,6 +31,25 @@ class MotorConnection(Schema):
         )
 
 
+def resolve_rover_wheels(project: RobotProject, motors: tuple[str, str]) -> list[str]:
+    """Require two distinct wheel shafts, each driven by exactly one motor."""
+    if motors[0] == motors[1]:
+        raise ValueError("select two distinct rover motors")
+    parts = {c.id: c for c in project.components}
+    wheels = []
+    for motor in motors:
+        links = [p for p in project.assembly.links if p.source == motor and p.kind == "shaft"]
+        if len(links) != 1 or parts[links[0].target].category != "wheel":
+            raise ValueError("each rover motor requires exactly one shaft link to a wheel")
+        wheel = links[0].target
+        if sum(p.target == wheel and p.kind == "shaft" for p in project.assembly.links) != 1:
+            raise ValueError("each rover wheel must have exactly one driving shaft")
+        wheels.append(wheel)
+    if len(set(wheels)) != 2:
+        raise ValueError("rover motors must drive distinct wheels")
+    return wheels
+
+
 def resolve_motor_connection(project: RobotProject, motor: str) -> MotorConnection:
     components = {c.id: c for c in project.components}
     component = components.get(motor)

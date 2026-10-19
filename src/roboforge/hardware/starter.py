@@ -13,6 +13,7 @@ from roboforge.ci_reports import rover_suite_junit
 from .project import RobotProject
 from .rover_brake import RoverBrakeConfig
 from .rover_report import render_rover_evidence
+from .rover_sizing import RoverSizingConfig
 from .rover_suite import RoverSuiteConfig, run_rover_suite
 from .validation import check_project
 
@@ -20,6 +21,7 @@ TEMPLATE_FILES = (
     "robot.yaml",
     "rover_wall.yaml",
     "rover_uphill.yaml",
+    "rover_sizing.yaml",
     "rover_feedback_suite.yaml",
     "README.md",
     "LICENSE",
@@ -47,6 +49,7 @@ def create_starter(
         project = RobotProject.model_validate(yaml.safe_load(payloads["robot.yaml"]))
         RoverBrakeConfig.model_validate(yaml.safe_load(payloads["rover_wall.yaml"]))
         RoverBrakeConfig.model_validate(yaml.safe_load(payloads["rover_uphill.yaml"]))
+        RoverSizingConfig.model_validate(yaml.safe_load(payloads["rover_sizing.yaml"]))
         suite = RoverSuiteConfig.model_validate(
             yaml.safe_load(payloads["rover_feedback_suite.yaml"])
         )

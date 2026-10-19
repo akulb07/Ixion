@@ -88,6 +88,11 @@ There's a supplied level/5°/15° suite with motion, current, traction and tilte
 IMU readings. It checks the declared cases, including clearance; keeping the
 rover parked on a slope is still separate work.
 
+For a quicker [motor and battery sizing check](docs/rover-sizing.md), there's now
+`ixion rover-size`. Give it a speed, acceleration, slope and battery charge to
+estimate required PWM, current and traction margin. It keeps failed demands and
+missing ratings visible, so a passing calculation isn't a build-ready verdict.
+
 Add `--encoder-cycles 20` to get ideal A/B encoder pulses for each wheel as well.
 That assumes 20 cycles per wheel revolution; the [encoder notes](docs/quadrature.md)
 explain the count convention. The example also counts those pulses through logical

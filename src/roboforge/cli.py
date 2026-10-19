@@ -120,6 +120,13 @@ def main(argv: list[str] | None = None) -> int:
     rover.add_argument("project", type=Path)
     rover.add_argument("scenario", type=Path)
     rover.add_argument("--output", type=Path, required=True)
+    rover_size = subparsers.add_parser(
+        "rover-size",
+        help="Screen a rover speed/acceleration demand against torque, supply and traction",
+    )
+    rover_size.add_argument("project", type=Path)
+    rover_size.add_argument("demand", type=Path)
+    rover_size.add_argument("--output", type=Path, required=True)
     rover_suite = subparsers.add_parser(
         "rover-suite", help="Run repeatable rover cases against declared acceptance checks"
     )
@@ -393,6 +400,37 @@ def main(argv: list[str] | None = None) -> int:
                 f"{summary['failed']} failed, {summary['error']} errors; saved to {args.output}"
             )
             return 0 if result["status"] == "passed" else 3
+        if args.command == "rover-size":
+            import json
+
+            from roboforge.ci_reports import validate_output_paths
+            from roboforge.hardware import load_project
+            from roboforge.hardware.rover_sizing import load_rover_sizing, size_rover
+
+            validate_output_paths([args.output], protected=[args.project, args.demand])
+            result = size_rover(load_project(args.project), load_rover_sizing(args.demand))
+            payload = json.dumps(result, indent=2, allow_nan=False)
+            with args.output.open("x", encoding="utf-8") as stream:
+                stream.write(payload + "\n")
+            failed = [c["code"] for c in result["result"]["checks"] if c["status"] == "failed"]
+            unassessed = sum(c["status"] == "not_assessed" for c in result["result"]["checks"])
+            sizing = result["result"]
+            duty = sizing["required_pwm_duty"]
+            point = sizing["point"]
+            print(
+                ("Required PWM unavailable" if duty is None else f"Required PWM={duty:.1%}")
+                + (
+                    "; electrical point unavailable"
+                    if point is None
+                    else f"; pack={point['battery']['terminal_voltage_v']:.4g} V, {point['battery']['current_a']:.4g} A"
+                )
+                + f"; traction margin={sizing['traction_margin_per_wheel_n']:.4g} N/wheel"
+            )
+            print(
+                f"{result['status']}: {', '.join(failed) if failed else 'no known bound exceeded'}; "
+                f"{unassessed} checks unassessed; engineering readiness not assessed; saved to {args.output}"
+            )
+            return 0 if result["status"] == "checks_passed" else 3
         if args.command == "rover-brake":
             import json
 

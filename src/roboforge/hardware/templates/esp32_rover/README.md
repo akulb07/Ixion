@@ -17,6 +17,17 @@ current and events. The report is local and doesn't need an internet connection.
 Use `rover_uphill.yaml` with new output names to try the supplied 5° uphill lane.
 Travel is along the lane; the speed-threshold stop doesn't establish hill holding.
 
+For a quick speed/acceleration and battery-demand calculation:
+
+```sh
+ixion rover-size robot.yaml rover_sizing.yaml --output sizing.json
+```
+
+The input asks for 0.3 m/s and 0.2 m/s² on a 5° slope at half charge. It prints
+required PWM, pack current and traction margin, and saves the full assumptions
+and checks. Missing current ratings stay unassessed. This is one operating point,
+so it doesn't prove the rover can reach it or complete a mission.
+
 For the normal case and three encoder faults:
 
 ```sh

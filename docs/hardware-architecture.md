@@ -123,6 +123,11 @@ loop does not replace validation against a physical reference robot.
    An incremental rolling runtime now accepts equal changing commands while
    preserving distance, wheel angle and battery state. General rover control,
    turning and slip remain pending; Phase B is still partial.
+   A [rover sizing solve](rover-sizing.md) now inverts the same motor/rolling
+   equations for prescribed speed, acceleration, uphill grade and SOC, including
+   shared battery sag, duty bounds, traction and current-reference screening.
+   Unknown ratings remain unassessed; this is one operating point rather than
+   a complete trajectory or physical capability claim.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
    Ideal [ultrasonic timing](ultrasonic-model.md) now converts supplied distances to

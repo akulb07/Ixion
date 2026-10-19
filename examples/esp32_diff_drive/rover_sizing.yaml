@@ -1,0 +1,10 @@
+# One assumed operating point, not a full acceleration or runtime prediction.
+speed_m_s: 0.3
+acceleration_m_s2: 0.2
+grade_rad: 0.08726646259971647  # 5 degrees uphill
+soc: 0.5
+max_pwm_duty: 0.8
+auxiliary_current_a: 0.1  # Explicit pack-side allowance, not inferred from wiring.
+rotating_inertia_per_wheel_kg_m2: 0.002
+friction_coefficient: 0.8
+driven_weight_fraction: 0.8
