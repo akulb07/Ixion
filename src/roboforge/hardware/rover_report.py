@@ -8,14 +8,25 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictInt,
+    model_serializer,
+    model_validator,
+)
 
 from roboforge.config import Nonnegative, Probability, Real
 from roboforge.core import finite
 
 from .artifact_io import decode_json_object
 from .encoder_health import EncoderFeedbackFault
+from .rover_power import DriverMode, RoverPowerConditions, RoverPowerInterval, RoverPowerResponse
 from .speed_firmware import SpeedControlSample
+from .voltage_limit import VoltageLimitEvent
+from .voltage_monitor import project_voltage_monitor
 
 
 class _View(BaseModel):
@@ -62,17 +73,25 @@ class _Sample(_View):
     encoder_counts: _Counts
     decoded_encoder_counts: _Counts
     driver_pwm_duty: tuple[Probability, Probability]
+    driver_modes: tuple[DriverMode, DriverMode] | None = None
     pack_current_a: Real
     pack_voltage_v: Real
     soc: Probability
 
+    @model_serializer(mode="wrap")
+    def preserve_absent_modes(self, handler):
+        data = handler(self)
+        if self.driver_modes is None:
+            data.pop("driver_modes", None)
+        return data
+
 
 class _RoverView(_View):
-    schema_version: Literal[7, 8]
+    schema_version: Literal[7, 8, 9, 10, 11, 12]
     experiment: Literal["straight_line_wall_brake"]
     status: str = Field(min_length=1, max_length=100)
     brake_reason: str | None = Field(default=None, max_length=200)
-    samples: tuple[_Sample, ...] = Field(min_length=1, max_length=10_001)
+    samples: tuple[_Sample, ...] = Field(min_length=1, max_length=10_002)
     metrics: _Metrics
 
     @model_validator(mode="after")
@@ -80,6 +99,315 @@ class _RoverView(_View):
         if any(a.time_s >= b.time_s for a, b in zip(self.samples, self.samples[1:])):
             raise ValueError("rover samples require strictly increasing times")
         return self
+
+
+class _PowerSample(_View):
+    auxiliary_current_a: Nonnegative
+    auxiliary_power_w: Nonnegative
+    interval_auxiliary_energy_j: Nonnegative
+    interval_terminal_energy_j: Nonnegative
+    pack_power_w: Nonnegative
+
+
+class _ResponseSample(_View):
+    driver_modes: tuple[DriverMode, DriverMode]
+    interval_start: RoverPowerInterval | None
+
+
+def _response_interval_projection(report, view, power, sample_power):
+    if view.schema_version not in (11, 12):
+        return
+    energy = auxiliary = 0.0
+    peak = max(s.pack_current_a for s in view.samples)
+    for index, (sample, raw, extra) in enumerate(
+        zip(view.samples, report["samples"], sample_power)
+    ):
+        response = _ResponseSample.model_validate(raw)
+        extra.update(response.model_dump(mode="json"))
+        start = response.interval_start
+        if index == 0:
+            if start is not None:
+                raise ValueError("initial response sample cannot contain an elapsed interval")
+            continue
+        previous = view.samples[index - 1]
+        if (
+            start is None
+            or start.time_s != previous.time_s
+            or start.speed_m_s != previous.speed_m_s
+            or start.soc != previous.soc
+        ):
+            raise ValueError("power interval start disagrees with preceding motion state")
+        if response.driver_modes != start.driver_modes:
+            raise ValueError("driver mode changed inside a held-command interval")
+        elapsed = sample.time_s - start.time_s
+        if (
+            extra["interval_terminal_energy_j"] != start.pack_power_w * elapsed
+            or extra["interval_auxiliary_energy_j"] != start.auxiliary_power_w * elapsed
+        ):
+            raise ValueError("recorded interval energy disagrees with held starting power")
+        if (
+            start.pack_current_a < power["auxiliary_current_a"]
+            or not math.isclose(
+                start.pack_power_w,
+                start.pack_voltage_v * start.pack_current_a,
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            )
+            or not math.isclose(
+                start.auxiliary_power_w,
+                start.pack_voltage_v * power["auxiliary_current_a"],
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            )
+        ):
+            raise ValueError("power interval start disagrees with supply conditions")
+        energy += extra["interval_terminal_energy_j"]
+        auxiliary += extra["interval_auxiliary_energy_j"]
+        peak = max(peak, start.pack_current_a)
+        response_event = report["power_response"]
+        if (
+            response_event is not None
+            and start.time_s >= response_event["time_s"]
+            and list(start.driver_modes) != [response_event["action"]] * 2
+        ):
+            raise ValueError("power interval start disagrees with latched response mode")
+    if (
+        report["metrics"]["terminal_energy_j"] != energy
+        or report["metrics"]["auxiliary_terminal_energy_j"] != auxiliary
+        or report["metrics"]["peak_sampled_pack_current_a"] != peak
+    ):
+        raise ValueError("response power totals disagree with interval evidence")
+
+
+def _power_projection(report, view, config):
+    power = RoverPowerConditions.model_validate(
+        {name: config[name] for name in RoverPowerConditions.model_fields if name in config}
+    )
+    if view.schema_version not in (9, 10, 11, 12):
+        if not power.uses_default_power:
+            raise ValueError("nondefault rover power conditions require schema 9")
+        if (
+            any(
+                s.get("auxiliary_current_a", 0) != 0
+                or s.get("auxiliary_power_w", 0) != 0
+                or s.get("interval_auxiliary_energy_j", 0) != 0
+                for s in report["samples"]
+            )
+            or report["metrics"].get("auxiliary_terminal_energy_j", 0) != 0
+        ):
+            raise ValueError("auxiliary power evidence requires schema 9")
+        return None, None
+    if view.schema_version == 9 and power.minimum_pack_voltage_v is not None:
+        raise ValueError("declared voltage limits require rover schema 10")
+    if view.schema_version in (10, 11) and power.minimum_pack_voltage_v is None:
+        raise ValueError("rover schema 10 requires a declared voltage limit")
+    if (view.schema_version == 11 and power.voltage_limit_action == "end") or (
+        view.schema_version not in (11, 12) and power.voltage_limit_action != "end"
+    ):
+        raise ValueError("post-limit response requires rover schema 11 and a coast/brake action")
+    if power.uses_default_power and view.schema_version != 12:
+        raise ValueError("rover schema 9 requires explicit nondefault power conditions")
+    if view.samples[0].time_s != 0 or view.samples[0].soc != power.initial_soc:
+        raise ValueError("initial rover sample disagrees with declared power conditions")
+    extras = [_PowerSample.model_validate(s) for s in report["samples"]]
+    if extras[0].interval_terminal_energy_j != 0 or extras[0].interval_auxiliary_energy_j != 0:
+        raise ValueError("initial rover sample cannot contain interval energy")
+    auxiliary_energy = 0.0
+    for sample, extra in zip(view.samples, extras):
+        if extra.auxiliary_current_a != power.auxiliary_current_a:
+            raise ValueError("recorded auxiliary current disagrees with power conditions")
+        if sample.pack_current_a < extra.auxiliary_current_a or sample.pack_voltage_v < 0:
+            raise ValueError("recorded pack cannot supply its declared auxiliary load")
+        if not math.isclose(
+            extra.auxiliary_power_w,
+            sample.pack_voltage_v * extra.auxiliary_current_a,
+            rel_tol=1e-12,
+            abs_tol=1e-12,
+        ):
+            raise ValueError("recorded auxiliary power disagrees with voltage and current")
+        if not math.isclose(
+            extra.pack_power_w,
+            sample.pack_voltage_v * sample.pack_current_a,
+            rel_tol=1e-12,
+            abs_tol=1e-12,
+        ):
+            raise ValueError("recorded pack power disagrees with voltage and current")
+        if extra.interval_auxiliary_energy_j > extra.interval_terminal_energy_j:
+            raise ValueError("auxiliary interval energy exceeds total terminal energy")
+        auxiliary_energy = finite(
+            auxiliary_energy + extra.interval_auxiliary_energy_j, "recorded auxiliary energy"
+        )
+    if any(a.soc < b.soc for a, b in zip(view.samples, view.samples[1:])):
+        raise ValueError("discharge-only rover SOC cannot increase")
+    recorded_energy = finite(
+        report["metrics"]["auxiliary_terminal_energy_j"], "auxiliary terminal energy"
+    )
+    if recorded_energy < 0 or recorded_energy != auxiliary_energy:
+        raise ValueError("auxiliary terminal energy disagrees with interval evidence")
+    conditions = power.model_dump(mode="json", exclude_none=True)
+    if power.voltage_limit_action == "end":
+        conditions.pop("voltage_limit_action")
+    return conditions, [s.model_dump(mode="json") for s in extras]
+
+
+def _voltage_limit_projection(report, view, power):
+    if view.schema_version not in (10, 11, 12):
+        if (
+            report.get("power_limit_event") is not None
+            or view.status
+            in {"power_limit_reached", "stopped_after_power_limit", "power_response_incomplete"}
+            or report["metrics"].get("power_limit_time_s") is not None
+        ):
+            raise ValueError("power-limit evidence requires rover schema 10")
+        return None
+    if power.get("minimum_pack_voltage_v") is None:
+        if (
+            report.get("power_limit_event") is not None
+            or report["metrics"].get("power_limit_time_s") is not None
+            or view.status
+            in {"power_limit_reached", "stopped_after_power_limit", "power_response_incomplete"}
+        ):
+            raise ValueError("power-limit evidence requires a declared threshold")
+        return None
+    raw = report["power_limit_event"]
+    time = report["metrics"]["power_limit_time_s"]
+    if time is not None:
+        time = finite(time, "recorded power-limit time")
+    threshold = power["minimum_pack_voltage_v"]
+    if raw is None:
+        if time is not None or view.status in {
+            "power_limit_reached",
+            "stopped_after_power_limit",
+            "power_response_incomplete",
+        }:
+            raise ValueError("power-limit outcome requires recorded limit evidence")
+        if any(s.pack_voltage_v <= threshold for s in view.samples):
+            raise ValueError("voltage-limit run contains an unreported limit crossing")
+        return None
+    limit = VoltageLimitEvent.model_validate(raw)
+    boundary = next((s for s in view.samples if s.time_s == time), None)
+    if (
+        limit.time_s != time
+        or boundary is None
+        or (
+            power.get("voltage_limit_action", "end") == "end"
+            and (view.status != "power_limit_reached" or time != view.samples[-1].time_s)
+        )
+    ):
+        raise ValueError("power-limit outcome, time and final sample disagree")
+    if limit.threshold_v != threshold:
+        raise ValueError("recorded voltage limit differs from its configured threshold")
+    if power.get("voltage_limit_action", "end") == "end" and (
+        report["metrics"].get("stop_time_s") is not None
+        or report["metrics"].get("wall_contact_time_s") is not None
+    ):
+        raise ValueError("power-limit boundary cannot claim a stopped or wall-contact outcome")
+    if any(s.pack_voltage_v <= threshold for s in view.samples if s.time_s < time):
+        raise ValueError("power-limit evidence ignored an earlier recorded crossing")
+    if limit.phase == "command_boundary":
+        if (
+            limit.voltage_v > threshold
+            or limit.bracket_end_time_s != time
+            or limit.time_tolerance_s != 0
+            or limit.bracket_end_voltage_v != limit.voltage_v
+        ):
+            raise ValueError("invalid command-boundary voltage limit")
+    else:
+        if limit.time_tolerance_s <= 0:
+            raise ValueError("physics voltage limit requires positive time tolerance")
+        if not limit.voltage_v > threshold >= limit.bracket_end_voltage_v:
+            raise ValueError("physics voltage limit must bracket the threshold")
+        if not 0 <= limit.bracket_end_time_s - time <= limit.time_tolerance_s * 1.001:
+            raise ValueError("voltage-limit time bracket exceeds its declared tolerance")
+        if not math.isclose(limit.voltage_v, boundary.pack_voltage_v, rel_tol=1e-10, abs_tol=1e-10):
+            raise ValueError("voltage-limit boundary disagrees with its final pack sample")
+    return limit.model_dump(mode="json")
+
+
+def _power_response_projection(report, view, power, limit):
+    if view.schema_version not in (11, 12) or power.get("voltage_limit_action", "end") == "end":
+        if (
+            report.get("power_response") is not None
+            or any(
+                report["metrics"].get(name) is not None
+                for name in (
+                    "distance_after_power_limit_m",
+                    "energy_after_power_limit_j",
+                    "power_response_elapsed_s",
+                )
+            )
+            or view.status in {"stopped_after_power_limit", "power_response_incomplete"}
+        ):
+            raise ValueError("post-limit response evidence requires rover schema 11")
+        return None
+    raw = report["power_response"]
+    metric_names = (
+        "distance_after_power_limit_m",
+        "energy_after_power_limit_j",
+        "power_response_elapsed_s",
+    )
+    if limit is None:
+        if raw is not None or any(report["metrics"][name] is not None for name in metric_names):
+            raise ValueError("power response requires a recorded voltage-limit event")
+        return None
+    response = RoverPowerResponse.model_validate(raw)
+    if response.time_s != limit["time_s"] or response.action != power["voltage_limit_action"]:
+        raise ValueError("power response disagrees with its limit time or configured action")
+    if any(command.resolve()[0] != response.action for command in response.motor_inputs):
+        raise ValueError("power response motor inputs disagree with its action")
+    boundary = next(s for s in view.samples if s.time_s == response.time_s)
+    at_boundary = 0.0
+    for sample in report["samples"]:
+        if sample["time_s"] <= response.time_s:
+            at_boundary += sample["interval_terminal_energy_j"]
+    if response.distance_m != boundary.distance_m or response.terminal_energy_j != at_boundary:
+        raise ValueError("power response disagrees with its recorded boundary state")
+    final = view.samples[-1]
+    stopped_speed = finite(report["config"]["stopped_speed_m_s"], "stopped speed")
+    if stopped_speed <= 0 or any(s.speed_m_s < 0 for s in view.samples):
+        raise ValueError("power response requires forward samples and a positive stop threshold")
+    total_energy = finite(report["metrics"]["terminal_energy_j"], "recorded terminal energy")
+    for name, expected in zip(
+        metric_names,
+        (
+            final.distance_m - response.distance_m,
+            total_energy - response.terminal_energy_j,
+            final.time_s - response.time_s,
+        ),
+    ):
+        if finite(report["metrics"][name], name) != expected or expected < 0:
+            raise ValueError("post-limit metrics disagree with the recorded response")
+    for sample in report["samples"]:
+        if sample["time_s"] > response.time_s and (
+            sample["driver_modes"] != [response.action] * 2
+            or sample["driver_pwm_duty"] != [c.pwm_duty for c in response.motor_inputs]
+        ):
+            raise ValueError("post-limit driver override did not remain latched")
+    if view.status not in {
+        "stopped_after_power_limit",
+        "power_response_incomplete",
+        "wall_contact",
+    }:
+        raise ValueError("post-limit run requires an explicit response outcome")
+    if view.status == "stopped_after_power_limit":
+        if (
+            view.metrics.stop_time_s != final.time_s
+            or final.speed_m_s > stopped_speed
+            or final.speed_m_s < 0
+            or view.metrics.wall_contact_time_s is not None
+        ):
+            raise ValueError("stopped response disagrees with its final motion evidence")
+    elif view.status == "wall_contact":
+        if view.metrics.wall_contact_time_s != final.time_s or view.metrics.stop_time_s is not None:
+            raise ValueError("wall-contact response disagrees with its final time")
+    elif (
+        view.metrics.stop_time_s is not None
+        or view.metrics.wall_contact_time_s is not None
+        or final.speed_m_s <= stopped_speed
+        or final.time_s != finite(report["config"]["duration_s"], "run horizon")
+    ):
+        raise ValueError("incomplete response must end at the horizon while still moving")
+    return response.model_dump(mode="json")
 
 
 def load_rover_evidence(path: str | Path) -> tuple[dict, str]:
@@ -107,7 +435,10 @@ def _case(name, status, checks, report, error=None):
             raise ValueError("missing rover report requires an explicit error case")
         return {"name": str(name), "status": status, "checks": checks, "error": error, "run": None}
     view = _RoverView.model_validate(report)
-    grade = finite((report.get("config") or {}).get("grade_rad", 0), "recorded rover grade")
+    config = report.get("config") or {}
+    if not isinstance(config, dict):
+        raise ValueError("recorded rover configuration must be an object")
+    grade = finite(config.get("grade_rad", 0), "recorded rover grade")
     body_grade = finite((report.get("body") or {}).get("grade_rad", 0), "recorded body grade")
     if grade != body_grade:
         raise ValueError("recorded grade disagrees with the rolling body")
@@ -117,7 +448,47 @@ def _case(name, status, checks, report, error=None):
         raise ValueError(
             "rover schema 7 requires level travel; schema 8 requires an explicit uphill grade"
         )
+    if not 0 <= grade < math.pi / 2:
+        raise ValueError("recorded rover grade requires nonnegative uphill travel")
+    power, sample_power = _power_projection(report, view, config)
+    voltage_limit = _voltage_limit_projection(report, view, power)
+    power_response = _power_response_projection(report, view, power, voltage_limit)
+    _response_interval_projection(report, view, power, sample_power)
+    monitor = None
+    if view.schema_version == 12:
+        monitor = project_voltage_monitor(
+            report["voltage_monitor"], config["voltage_monitor"], report["samples"]
+        )
+        firmware = report["firmware"]
+        if (
+            "voltage_callback" in firmware
+            or "voltage_callback_count" in firmware
+            or firmware.get("interface_version") == 5
+        ):
+            count = firmware.get("voltage_callback_count")
+            if (
+                firmware.get("voltage_callback") is not True
+                or firmware.get("interface_version") != 5
+                or type(count) is not int
+                or count != len(monitor["readings"])
+            ):
+                raise ValueError(
+                    "firmware voltage callback evidence disagrees with delivered readings"
+                )
+    elif config.get("voltage_monitor") is not None or report.get("voltage_monitor") is not None:
+        raise ValueError("voltage monitor evidence requires rover schema 12")
     metrics = view.metrics.model_dump(mode="json")
+    if view.schema_version in (11, 12):
+        metrics.update(
+            {
+                name: report["metrics"][name]
+                for name in (
+                    "distance_after_power_limit_m",
+                    "energy_after_power_limit_j",
+                    "power_response_elapsed_s",
+                )
+            }
+        )
     events = []
 
     def event(time, kind, title, detail):
@@ -136,6 +507,20 @@ def _case(name, status, checks, report, error=None):
 
     for entry in report.get("encoder_feedback", {}).get("activations", []):
         event(entry["time_s"], "fault", f"{entry['channel']} counter {entry['kind']}", entry)
+    if voltage_limit is not None:
+        event(
+            voltage_limit["time_s"], "power", "Declared pack-voltage limit reached", voltage_limit
+        )
+    if power_response is not None:
+        event(
+            power_response["time_s"],
+            "power",
+            f"Driver {power_response['action']} response latched",
+            power_response,
+        )
+    for capture in (monitor or {}).get("readings", []):
+        reading = capture["observation"]
+        event(reading["time_s"], "voltage", "Voltage conversion delivered", reading)
     for field, title in (
         ("detection_time_s", "Brake request detected"),
         ("brake_command_time_s", "Brake applied"),
@@ -183,6 +568,24 @@ def _case(name, status, checks, report, error=None):
         "run": {
             **view.model_dump(mode="json"),
             "grade_rad": grade,
+            **(
+                {}
+                if view.schema_version not in (10, 11, 12)
+                else {"power_limit_event": voltage_limit}
+            ),
+            **({} if view.schema_version not in (11, 12) else {"power_response": power_response}),
+            **({} if monitor is None else {"voltage_monitor": monitor}),
+            **(
+                {}
+                if power is None
+                else {
+                    "power_conditions": power,
+                    "samples": [
+                        {**sample.model_dump(mode="json"), **extra}
+                        for sample, extra in zip(view.samples, sample_power)
+                    ],
+                }
+            ),
             "events": sorted(events, key=lambda event: event["time_s"]),
             "speed_control": control,
             "configuration": {"scenario": report.get("config"), "firmware": report.get("firmware")},
@@ -311,7 +714,7 @@ def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> s
             '<input id="bench-row" type="range" min="0" step="1" value="0" aria-label="Measurement row">'
             '<pre id="bench-detail"></pre><p class="hint">Only paired values appear as trace overlays. '
             "Selecting an in-range measurement row moves the simulation cursor. Out-of-range rows leave it unchanged; rejected rows remain unpaired.</p></section>"
-            '<section id="run"><p id="fixture-scope" class="hint"></p><div id="metrics" class="metrics"></div>'
+            '<section id="run"><p id="fixture-scope" class="hint"></p><p id="power-scope" class="hint"></p><div id="metrics" class="metrics"></div>'
             '<div class="transport"><label for="playhead">Inspect time <output id="time"></output></label>'
             '<input id="playhead" type="range" min="0" step="1" value="0" aria-label="Recorded sample">'
             '<span id="sample-index"></span></div><div id="readout" class="readout"></div>'
@@ -320,7 +723,8 @@ def render_rover_evidence(report: dict, source_sha256: str = "unavailable") -> s
             '<section><h2>Acceptance checks</h2><div id="checks"></div></section>'
             '<section><h2>Event timeline</h2><label for="filter">Show </label>'
             '<select id="filter"><option value="all">All events</option><option value="fault">Counter faults</option>'
-            '<option value="control">Braking</option><option value="sonar">Sonar</option>'
+            '<option value="control">Braking</option><option value="power">Power limits</option><option value="sonar">Sonar</option>'
+            '<option value="voltage">Voltage readings</option>'
             '<option value="imu">IMU reads</option><option value="serial">Serial</option></select>'
             '<div class="event-layout"><div id="events"></div><pre id="event-detail">Select an event for saved evidence.</pre></div></section>'
             '<details><summary>Recorded configuration</summary><pre id="configuration"></pre></details></section>'

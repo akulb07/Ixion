@@ -8,6 +8,12 @@ That's what I'm trying to build with Ixion: pick the parts, connect them, run th
 code and see how the robot behaves before building it for real.
 
 It's still a work in progress. The 2D simulator and experiment workspace work.
+The [hardware workspace](docs/hardware-workspace.md) now opens the reference rover
+in the browser, with part and wiring edits, sizing estimates, design checks and
+saved experiments. You can replay a run in 3D alongside its telemetry, add a
+payload and compare the same tests, then export both runs in one offline report.
+The wheel size and spacing use the project inputs; the board shapes and layout
+are still placeholders.
 The hardware side can check some wiring and electrical constraints, and a small
 host Python controller can now brake a moving rover from simulated echo pulses.
 It's a straight-line fixture with assumed parts and geometry; the rest of the
@@ -92,6 +98,29 @@ For a quicker [motor and battery sizing check](docs/rover-sizing.md), there's no
 `ixion rover-size`. Give it a speed, acceleration, slope and battery charge to
 estimate required PWM, current and traction margin. It keeps failed demands and
 missing ratings visible, so a passing calculation isn't a build-ready verdict.
+
+The moving rover also accepts [initial battery charge and a pack-side auxiliary
+load](docs/rover-power.md). The starter has a full/half-charge suite, with voltage,
+charge and extra-load traces. The load keeps drawing current when the motors brake.
+
+There are [declared voltage-limit cases](docs/rover-voltage-limits.md) too. They
+keep the last motion state when supply voltage reaches a chosen boundary, and
+the suite can check final speed, energy and limit time. A boundary isn't a BMS
+simulation or proof that the rover stopped.
+
+You can also [keep the rover moving after that event](docs/rover-power-response.md)
+with a latched coast or brake command. The starter has both cases, so it's easy
+to compare the extra travel and see when a run ends still moving. This keeps the
+supplies modeled; it doesn't simulate disconnecting the battery.
+
+There's now a [sampled voltage-feedback demo](docs/rover-voltage-feedback.md) too.
+It compares fresh, slow, stale and clipped readings, so you can see how sensing
+and controller timing change braking. It's an ideal monitor with explicit
+conversion time and quantization; actual MCU ADC wiring is still ahead.
+
+You can also try [gain, offset and repeatable noise](docs/rover-voltage-errors.md)
+to see a high reading miss a low-voltage condition or a low reading brake early.
+The new starter suite keeps the model voltage and controller reading together.
 
 Add `--encoder-cycles 20` to get ideal A/B encoder pulses for each wheel as well.
 That assumes 20 cycles per wheel revolution; the [encoder notes](docs/quadrature.md)

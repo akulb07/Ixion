@@ -200,9 +200,24 @@ Invalid text, levels, oversized responses and exhausted console lifetime budgets
 fail the run. Callback code doesn't receive a direct console handle or immediate
 queue feedback; use the saved report to inspect accepted and rejected counts.
 
+## Reading pack voltage
+
+An optional `on_voltage(observation, inputs)` callback receives completed readings
+from the [ideal sampled voltage monitor](rover-voltage-feedback.md). The frame
+contains sample and delivery times, raw count, decoded voltage and an over-range
+flag. The unquantized source voltage stays outside controller inputs. Return the
+same requests or `FirmwareResponse` used by the other callbacks. Sensor delivery
+can request braking between control ticks; output application still waits for
+the next tick. Unfinished conversions don't call the controller.
+
+The supplied `VoltageBrakeFirmware` retains sonar fallback and checks range,
+sample age and low decoded voltage in that order. Suite cases can select it with
+`controller: voltage_guard`. Its example settings and limitations are in the
+voltage-feedback guide. This fixture doesn't implement MCU ADC pins or circuitry.
+
 ## Reports and limits
 
-Rover reports use schema version 7, with a `firmware` block containing interface version,
+Default rover reports use schema version 7, with a `firmware` block containing interface version,
 qualified Python class name, execution mode, latched request, delivery time and
 current command. Controllers based on Ixion's `Schema` also save their parameter
 fields, as the encoder example does. Other Python objects report `parameters: null`;
@@ -215,6 +230,12 @@ range/tick and optional IMU programs. `imu_callback` records whether the program
 report still contains every completed read, including when the controller has no
 IMU handler. Optional callback exceptions and invalid return values fail the run
 in the same way as range or tick callback errors.
+
+Monitor-enabled runs use rover schema 12. Programs with `on_voltage` save firmware
+interface version 5, `voltage_callback: true` and `voltage_callback_count`.
+Programs without that optional method retain interface version 4, even when a
+monitor records observations. The callback count includes successful deliveries
+only; pending conversions remain in the enclosing monitor report.
 
 `log_write_attempts`, `log_writes_accepted` and `log_writes_rejected` count only
 controller-submitted messages. The enclosing `serial` block includes both host

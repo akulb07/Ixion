@@ -9,6 +9,7 @@ from roboforge.config import Nonnegative, Positive, Probability, Schema
 
 from .project import Identifier
 from .rover_imu import IMUObservation
+from .voltage_monitor import VoltageObservation
 
 
 class FirmwareInputs(Schema):
@@ -122,6 +123,11 @@ class HostRoverFirmware:
         imu_callback = getattr(program, "on_imu", None)
         if imu_callback is not None and not callable(imu_callback):
             raise ValueError("optional on_imu firmware method must be callable")
+        voltage_callback = getattr(program, "on_voltage", None)
+        if voltage_callback is not None and not callable(voltage_callback):
+            raise ValueError("optional on_voltage firmware method must be callable")
+        self._has_voltage_callback = voltage_callback is not None
+        self._voltage_callback_count = 0
         if on_log is not None and not callable(on_log):
             raise ValueError("firmware log sink must be callable")
         self._program = program
@@ -230,10 +236,25 @@ class HostRoverFirmware:
             self._drive_commands += 1
         return self._command
 
+    def on_voltage(self, observation: VoltageObservation, inputs: FirmwareInputs) -> None:
+        if observation.time_s != inputs.time_s:
+            raise ValueError("voltage observation and input frame must share delivery time")
+        if self._has_voltage_callback:
+            self._invoke("on_voltage", inputs, observation)
+            self._voltage_callback_count += 1
+
     def report(self) -> dict:
         kind = type(self._program)
         return {
-            "interface_version": 4,
+            "interface_version": 5 if self._has_voltage_callback else 4,
+            **(
+                {}
+                if not self._has_voltage_callback
+                else {
+                    "voltage_callback": True,
+                    "voltage_callback_count": self._voltage_callback_count,
+                }
+            ),
             "program": f"{kind.__module__}.{kind.__qualname__}",
             "parameters": self._program.model_dump(mode="json")
             if isinstance(self._program, Schema)

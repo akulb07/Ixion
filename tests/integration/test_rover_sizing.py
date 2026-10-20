@@ -21,9 +21,6 @@ def inputs():
 
 def test_reference_sizing_retains_design_provenance_and_replays_mechanical_acceleration():
     project, config = inputs()
-    # The runtime currently has no auxiliary-load argument. Use zero for this
-    # exact end-to-end replay against the same battery and motor models.
-    config = config.model_copy(update={"auxiliary_current_a": 0})
     report = size_rover(project, config)
     assert report["status"] == "checks_passed"
     assert report["engineering_readiness"] == "not_assessed"
@@ -46,7 +43,13 @@ def test_reference_sizing_retains_design_provenance_and_replays_mechanical_accel
         )
         * 2,
     )
-    runtime = RollingRuntime(system, BatteryState(soc=config.soc), body)
+    runtime = RollingRuntime(
+        system,
+        BatteryState(soc=config.soc),
+        body,
+        auxiliary_current_a=config.auxiliary_current_a,
+        vcc_v=config.vcc_v,
+    )
     assert runtime.sample.acceleration_m_s2 == pytest.approx(config.acceleration_m_s2)
     assert runtime.sample.shaft.point.model_dump(mode="json") == result["point"]
 

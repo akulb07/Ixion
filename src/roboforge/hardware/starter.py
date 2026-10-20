@@ -22,6 +22,11 @@ TEMPLATE_FILES = (
     "rover_wall.yaml",
     "rover_uphill.yaml",
     "rover_sizing.yaml",
+    "rover_power_suite.yaml",
+    "rover_voltage_limit_suite.yaml",
+    "rover_power_response_suite.yaml",
+    "rover_voltage_feedback_suite.yaml",
+    "rover_voltage_error_suite.yaml",
     "rover_feedback_suite.yaml",
     "README.md",
     "LICENSE",
@@ -50,6 +55,13 @@ def create_starter(
         RoverBrakeConfig.model_validate(yaml.safe_load(payloads["rover_wall.yaml"]))
         RoverBrakeConfig.model_validate(yaml.safe_load(payloads["rover_uphill.yaml"]))
         RoverSizingConfig.model_validate(yaml.safe_load(payloads["rover_sizing.yaml"]))
+        RoverSuiteConfig.model_validate(yaml.safe_load(payloads["rover_power_suite.yaml"]))
+        RoverSuiteConfig.model_validate(yaml.safe_load(payloads["rover_voltage_limit_suite.yaml"]))
+        RoverSuiteConfig.model_validate(yaml.safe_load(payloads["rover_power_response_suite.yaml"]))
+        RoverSuiteConfig.model_validate(
+            yaml.safe_load(payloads["rover_voltage_feedback_suite.yaml"])
+        )
+        RoverSuiteConfig.model_validate(yaml.safe_load(payloads["rover_voltage_error_suite.yaml"]))
         suite = RoverSuiteConfig.model_validate(
             yaml.safe_load(payloads["rover_feedback_suite.yaml"])
         )

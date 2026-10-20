@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 
 from roboforge.config import Nonnegative, Positive, Schema, _UniqueKeyLoader
 
@@ -14,6 +14,7 @@ from .encoder_speed import EncoderSpeedConfig
 from .project import Identifier, RobotProject
 from .rover_brake import RoverBrakeConfig, run_rover_brake
 from .speed_firmware import EncoderSpeedFirmware
+from .voltage_firmware import VoltageBrakeFirmware, VoltageGuardConfig
 
 RoverStatus = Literal[
     "stopped_before_wall",
@@ -21,6 +22,9 @@ RoverStatus = Literal[
     "brake_triggered",
     "brake_pending",
     "completed_without_brake",
+    "power_limit_reached",
+    "stopped_after_power_limit",
+    "power_response_incomplete",
 ]
 
 
@@ -30,19 +34,105 @@ class RoverAcceptance(Schema):
     minimum_front_clearance_m: Nonnegative | None = None
     maximum_peak_pack_current_a: Nonnegative | None = None
     maximum_fault_detection_delay_s: Nonnegative | None = None
+    maximum_final_speed_m_s: Nonnegative | None = None
+    maximum_terminal_energy_j: Nonnegative | None = None
+    maximum_power_limit_time_s: Nonnegative | None = None
+    maximum_distance_after_power_limit_m: Nonnegative | None = None
+    maximum_power_response_elapsed_s: Nonnegative | None = None
+
+    @property
+    def uses_extended_bounds(self):
+        return any(
+            getattr(self, name) is not None
+            for name in (
+                "maximum_final_speed_m_s",
+                "maximum_terminal_energy_j",
+                "maximum_power_limit_time_s",
+                "maximum_distance_after_power_limit_m",
+                "maximum_power_response_elapsed_s",
+            )
+        )
+
+    @model_serializer(mode="wrap")
+    def preserve_legacy_policy(self, handler):
+        data = handler(self)
+        for name in (
+            "maximum_final_speed_m_s",
+            "maximum_terminal_energy_j",
+            "maximum_power_limit_time_s",
+            "maximum_distance_after_power_limit_m",
+            "maximum_power_response_elapsed_s",
+        ):
+            if getattr(self, name) is None:
+                data.pop(name, None)
+        return data
 
 
 class RoverSuiteCase(Schema):
     name: Identifier
     scenario: RoverBrakeConfig
-    controller: Literal["sonar", "encoder_speed"] = "encoder_speed"
+    controller: Literal["sonar", "encoder_speed", "voltage_guard"] = "encoder_speed"
+    voltage_guard: VoltageGuardConfig | None = None
     target_speed_m_s: Positive = 0.2
     target_ramp_s: Positive = 1
     encoder_health: EncoderHealthConfig | None = EncoderHealthConfig()
     acceptance: RoverAcceptance = RoverAcceptance()
 
+    @model_serializer(mode="wrap")
+    def preserve_legacy_controller(self, handler):
+        data = handler(self)
+        if self.voltage_guard is None:
+            data.pop("voltage_guard", None)
+        return data
+
     @model_validator(mode="after")
     def check_detection_policy(self):
+        if self.controller == "voltage_guard":
+            if self.voltage_guard is None or self.scenario.voltage_monitor is None:
+                raise ValueError(
+                    "voltage_guard controller requires voltage_guard settings and a voltage_monitor"
+                )
+        elif self.voltage_guard is not None:
+            raise ValueError("voltage_guard settings require the voltage_guard controller")
+        power_statuses = {
+            "power_limit_reached",
+            "stopped_after_power_limit",
+            "power_response_incomplete",
+        }
+        if (
+            self.acceptance.expected_status in power_statuses
+            and self.scenario.minimum_pack_voltage_v is None
+        ):
+            raise ValueError("expected power-limit outcome requires a configured voltage limit")
+        if self.acceptance.maximum_power_limit_time_s is not None and (
+            self.scenario.minimum_pack_voltage_v is None
+            or self.acceptance.expected_status not in power_statuses | {"wall_contact"}
+        ):
+            raise ValueError(
+                "power-limit time bound requires the declared power-limit outcome and voltage limit"
+            )
+        if (
+            self.acceptance.expected_status
+            in {"stopped_after_power_limit", "power_response_incomplete"}
+            and self.scenario.voltage_limit_action == "end"
+        ):
+            raise ValueError("post-limit outcome requires a coast or brake response")
+        if (
+            self.acceptance.expected_status == "power_limit_reached"
+            and self.scenario.voltage_limit_action != "end"
+        ):
+            raise ValueError("power-limit boundary outcome requires voltage_limit_action end")
+        if self.acceptance.maximum_distance_after_power_limit_m is not None and (
+            self.scenario.voltage_limit_action == "end"
+            or self.acceptance.expected_status
+            not in {"stopped_after_power_limit", "power_response_incomplete", "wall_contact"}
+        ):
+            raise ValueError("post-limit distance bound requires a declared response outcome")
+        if self.acceptance.maximum_power_response_elapsed_s is not None and (
+            self.scenario.voltage_limit_action == "end"
+            or self.acceptance.expected_status != "stopped_after_power_limit"
+        ):
+            raise ValueError("response elapsed bound requires a stopped-after-power-limit outcome")
         if (
             self.acceptance.maximum_fault_detection_delay_s is not None
             and not self.scenario.encoder_faults
@@ -107,6 +197,10 @@ def check_rover_acceptance(report: dict, policy: RoverAcceptance) -> list[dict]:
     for field, limit, direction in (
         ("final_front_clearance_m", policy.minimum_front_clearance_m, "minimum"),
         ("peak_sampled_pack_current_a", policy.maximum_peak_pack_current_a, "maximum"),
+        ("final_speed_m_s", policy.maximum_final_speed_m_s, "maximum"),
+        ("terminal_energy_j", policy.maximum_terminal_energy_j, "maximum"),
+        ("distance_after_power_limit_m", policy.maximum_distance_after_power_limit_m, "maximum"),
+        ("power_response_elapsed_s", policy.maximum_power_response_elapsed_s, "maximum"),
     ):
         if limit is not None:
             actual = report["metrics"].get(field)
@@ -114,6 +208,14 @@ def check_rover_acceptance(report: dict, policy: RoverAcceptance) -> list[dict]:
                 actual >= limit if direction == "minimum" else actual <= limit
             )
             check(field, actual, {direction: limit}, passed)
+    if policy.maximum_power_limit_time_s is not None:
+        actual = (report.get("power_limit_event") or {}).get("bracket_end_time_s")
+        check(
+            "power_limit_bracket_end_time_s",
+            actual,
+            {"maximum": policy.maximum_power_limit_time_s},
+            actual is not None and actual <= policy.maximum_power_limit_time_s,
+        )
     if policy.maximum_fault_detection_delay_s is not None:
         fault = (report.get("speed_control", {}).get("encoder_health") or {}).get("fault")
         activations = report["encoder_feedback"]["activations"]
@@ -145,8 +247,14 @@ def run_rover_suite(project: RobotProject, config: RoverSuiteConfig) -> dict:
                     brake_threshold_m=case.scenario.brake_threshold_m,
                     timeout_action=case.scenario.timeout_action,
                 )
+            elif case.controller == "voltage_guard":
+                controller = VoltageBrakeFirmware(
+                    brake_threshold_m=case.scenario.brake_threshold_m,
+                    timeout_action=case.scenario.timeout_action,
+                    **case.voltage_guard.model_dump(),
+                )
             report = run_rover_brake(project, case.scenario, firmware=controller)
-            if controller is not None:
+            if case.controller == "encoder_speed":
                 report["speed_control"] = controller.report()
             checks = check_rover_acceptance(report, case.acceptance)
             cases.append(

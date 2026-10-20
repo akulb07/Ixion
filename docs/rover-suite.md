@@ -29,6 +29,12 @@ to compare without feedback checks. These speed-specific settings have no effect
 on the sonar controller. Resolution and wheel radius always come from the project;
 other PI settings retain the reference defaults and appear in each run's report.
 
+`controller: voltage_guard` selects the [sampled voltage-feedback policy](rover-voltage-feedback.md).
+It requires a scenario `voltage_monitor` and a `voltage_guard` block with
+`minimum_voltage_v`, `maximum_sample_age_s` and optional `log_decisions`.
+It brakes on clipped, stale or low delivered readings while retaining sonar
+fallback. Those guard settings are rejected for other controller types.
+
 Acceptance settings are:
 
 | Field | Meaning |
@@ -38,12 +44,23 @@ Acceptance settings are:
 | `minimum_front_clearance_m` | Optional lower bound on final front clearance. |
 | `maximum_peak_pack_current_a` | Optional upper bound on the peak sampled pack current. This inherits the simulation's sampling and electrical assumptions. |
 | `maximum_fault_detection_delay_s` | Optional upper bound from the first actual injected counter-fault activation to the speed controller's first feedback-check trip. Requires a fault in the case. |
+| `maximum_final_speed_m_s` | Optional upper bound on recorded final speed, including when a power limit ends the run. |
+| `maximum_terminal_energy_j` | Optional upper bound on total pack-terminal energy, including auxiliary consumption. |
+| `maximum_power_limit_time_s` | Optional bound on the upper time-bracket edge of a declared voltage-limit event. Requires that limit and an explicit limit/response or wall-contact outcome. |
+| `maximum_distance_after_power_limit_m` | Optional upper bound on travel after the declared driver response starts. Requires a response outcome. |
+| `maximum_power_response_elapsed_s` | Optional upper bound from response start to the stopped-speed threshold. Requires `stopped_after_power_limit`. |
 
 Limits are inclusive. Missing requested measurements fail their checks. A sonar
 stop cannot substitute for a feedback-check trip in the fault-delay check. For
 different fault times on each wheel, delay is measured from the earliest actual
 activation, not a guessed cause of the eventual trip. The individual report keeps
 the full activation and fault evidence so that interpretation stays visible.
+
+See the [voltage-limit suite](rover-voltage-limits.md) for explicit power-boundary
+cases. A power boundary retains its final speed and doesn't establish a physical
+shutdown or a stopped state.
+The [response suite](rover-power-response.md) continues with a latched coast or
+brake command and keeps stopped, unfinished and contact outcomes separate.
 
 The suite supports 1–16 uniquely named cases, a total budget of 40,000 requested
 physics steps and a 128 KiB input limit. Each case keeps its existing 10,000-step

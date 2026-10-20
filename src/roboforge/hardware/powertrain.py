@@ -84,15 +84,14 @@ class Powertrain(Schema):
             samples.append(PowertrainSample(time_s=end, state=state, point=point))
         return DischargeTrace(samples=tuple(samples), duration_s=duration, max_step_s=step)
 
-    def operating_point(
-        self, state: BatteryState, vcc_v: float = 3.3, auxiliary_current_a: float = 0
-    ) -> PowertrainPoint:
-        """Solve pack voltage and signed channel supply currents simultaneously.
+    def algebraic_supply_voltage(self, soc: float, auxiliary_current_a: float = 0) -> float:
+        """Prospective shared voltage, before driver operating-range validation.
 
         For each driven channel, I_supply = a*(a*V - E)/(Rm+Rd),
         where a is signed duty. With I_total = A*V+B and V=OCV-Rb*I_total,
         V=(OCV-Rb*B)/(1+Rb*A). Brake/coast channels draw no ideal supply
-        current. Regenerative channels are rejected until sink paths are modeled.
+        current. This algebraic value can be outside the supported supply range;
+        it is not a valid driver point or proof of regenerative acceptance.
         """
         auxiliary = nonnegative(auxiliary_current_a, "auxiliary current")
         conductance, offset = 0.0, auxiliary
@@ -110,10 +109,17 @@ class Powertrain(Schema):
             conductance = finite(conductance + fraction * fraction / resistance, "conductance")
             offset = finite(offset - fraction * emf / resistance, "current offset")
         resistance = self.battery.internal_resistance_ohm
-        ocv = self.battery.open_circuit_voltage(state.soc)
-        voltage = finite(
+        ocv = self.battery.open_circuit_voltage(soc)
+        return finite(
             (ocv - resistance * offset) / (1 + resistance * conductance), "coupled voltage"
         )
+
+    def operating_point(
+        self, state: BatteryState, vcc_v: float = 3.3, auxiliary_current_a: float = 0
+    ) -> PowertrainPoint:
+        """Solve shared supply and validate supported motor/driver/battery points."""
+        auxiliary = nonnegative(auxiliary_current_a, "auxiliary current")
+        voltage = self.algebraic_supply_voltage(state.soc, auxiliary)
         channels = tuple(
             self.driver.evaluate(c.motor, c.inputs, voltage, vcc_v, c.output_speed_rad_s)
             for c in self.channels

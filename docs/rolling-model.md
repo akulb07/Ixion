@@ -55,6 +55,11 @@ charge for the next step. A rejected step leaves that runtime state unchanged.
 It requires identical motor channels and speeds, with two equal commands; it is
 not a differential-drive turning model.
 
+Optional keyword arguments `vcc_v` and `auxiliary_current_a` retain a supplied
+driver logic voltage and constant pack-side load through every step, including
+braking. The initial `BatteryState` supplies SOC. They use the same solve as
+the fixed-command bench and [moving rover power conditions](rover-power.md).
+
 The [rover wall-brake fixture](rover-brake.md) uses this runtime to connect echo
 feedback to changing driver commands and moving-body telemetry. Its explicit
 front boundary ends the run at first wall contact. That boundary is a geometric

@@ -19,6 +19,8 @@ from roboforge.config import RunConfig
 from roboforge.control_analysis import analyze_control
 from roboforge.ekf_analysis import analyze_ekf
 from roboforge.experiments import paired_differences
+from roboforge.hardware.api import hardware_router
+from roboforge.hardware.workspace import HardwareService
 from roboforge.mapping_analysis import analyze_map
 from roboforge.odometry_analysis import analyze_odometry
 from roboforge.planning_service import PlanningRequest, PlanningService
@@ -151,11 +153,15 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         app.state.service = RunService(directory)
         app.state.planner = PlanningService()
         try:
-            app.state.batches = BatchService(app.state.service)
+            app.state.hardware = HardwareService(Path(directory) / "hardware")
             try:
-                yield
+                app.state.batches = BatchService(app.state.service)
+                try:
+                    yield
+                finally:
+                    app.state.batches.close()
             finally:
-                app.state.batches.close()
+                app.state.hardware.close()
         finally:
             app.state.service.close()
 
@@ -169,6 +175,7 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
         TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"]
     )
     app.add_middleware(BodyLimitMiddleware)
+    app.include_router(hardware_router())
 
     @app.middleware("http")
     async def local_requests(request: Request, call_next):
@@ -212,7 +219,8 @@ def create_app(directory: str | Path = "results/service") -> FastAPI:
             "status": "ok",
             "version": __version__,
             "recovery_warnings": request.app.state.service.recovery_warnings
-            + request.app.state.batches.recovery_warnings,
+            + request.app.state.batches.recovery_warnings
+            + request.app.state.hardware.recovery_warnings,
         }
 
     @app.get("/api/config/schema")

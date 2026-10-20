@@ -8,6 +8,7 @@ from roboforge.hardware.rover_firmware import (
     ObstacleBrakeFirmware,
     RangeObservation,
 )
+from roboforge.hardware.voltage_monitor import VoltageObservation
 
 
 def inputs(time=0):
@@ -48,7 +49,7 @@ def test_tick_request_can_brake_at_the_same_boundary():
     assert host.report()["parameters"] is None
 
 
-@pytest.mark.parametrize("method", ["on_range", "on_tick", "on_imu"])
+@pytest.mark.parametrize("method", ["on_range", "on_tick", "on_imu", "on_voltage"])
 @pytest.mark.parametrize("failure", ["exception", "wrong_result", "invalid_request"])
 def test_callback_failures_are_explicit_and_cannot_resume(method, failure):
     class Broken(ObstacleBrakeFirmware):
@@ -68,6 +69,13 @@ def test_callback_failures_are_explicit_and_cannot_resume(method, failure):
             host.on_range(RangeObservation(time_s=0, status="timeout"), inputs())
         elif method == "on_imu":
             host.on_imu(imu_observation(), inputs())
+        elif method == "on_voltage":
+            host.on_voltage(
+                VoltageObservation(
+                    time_s=0.001, sample_time_s=0, raw_count=1, voltage_v=7, over_range=False
+                ),
+                inputs(0.001),
+            )
         else:
             host.tick(inputs())
     with pytest.raises(ValueError, match="failed host firmware"):

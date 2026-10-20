@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 const nodeFiles = {
   name: "node-files",
   setup(builder) {
-    builder.onResolve({ filter: /.*/ }, (args) => {
+    builder.onResolve({ filter: /.*/ }, async (args) => {
       const from = args.importer || path.join(process.cwd(), "build.mjs");
       const resolver = createRequire(from);
       let target;
@@ -23,15 +23,24 @@ const nodeFiles = {
         }
         if (!target)
           throw new Error(`Cannot resolve ${args.path} from ${from}`);
+      } else if (args.path === "three") {
+        // Honor the browser ESM export; the CJS entry uses Node-only warnings.
+        const root = path.resolve(
+          path.dirname(resolver.resolve("three")),
+          "..",
+        );
+        const spec = JSON.parse(
+          await readFile(path.join(root, "package.json"), "utf8"),
+        );
+        target = path.resolve(root, spec.exports["."].import);
       } else target = resolver.resolve(args.path);
       return { path: target, namespace: "node-file" };
     });
     builder.onLoad({ filter: /.*/, namespace: "node-file" }, async (args) => ({
       contents: await readFile(args.path, "utf8"),
-      loader:
-        path.extname(args.path).slice(1) === "mjs"
-          ? "js"
-          : path.extname(args.path).slice(1),
+      loader: ["mjs", "cjs"].includes(path.extname(args.path).slice(1))
+        ? "js"
+        : path.extname(args.path).slice(1),
     }));
   },
 };
@@ -44,6 +53,7 @@ const result = await build({
   sourcemap: false,
   outfile: "../src/roboforge/web/assets/app.js",
   target: ["es2022"],
+  supported: { "template-literal": false },
   plugins: process.env.ROBOFORGE_NODE_RESOLVE ? [nodeFiles] : [],
   write: false,
   define: { "process.env.NODE_ENV": '"production"' },
@@ -84,6 +94,7 @@ const notices = await Promise.all(
     ["React", reactRoot],
     ["React DOM", domRoot],
     ["Scheduler", schedulerRoot],
+    ["Three.js", path.resolve(path.dirname(resolve.resolve("three")), "..")],
   ].map(
     async ([name, root]) =>
       `${name}\n${await readFile(path.join(root, "LICENSE"), "utf8")}`,

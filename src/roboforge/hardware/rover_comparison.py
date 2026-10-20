@@ -13,6 +13,7 @@ from .rover_firmware import ObstacleBrakeFirmware
 from .rover_report import project_rover_evidence
 from .rover_suite import RoverSuiteConfig, check_rover_acceptance
 from .speed_firmware import EncoderSpeedFirmware
+from .voltage_firmware import VoltageBrakeFirmware
 
 
 class RecordedRoverMetrics(Schema):
@@ -28,6 +29,11 @@ class RecordedRoverMetrics(Schema):
     final_front_clearance_m: Real
     terminal_energy_j: Nonnegative
     peak_sampled_pack_current_a: Nonnegative
+    auxiliary_terminal_energy_j: Nonnegative | None = None
+    power_limit_time_s: Nonnegative | None = None
+    distance_after_power_limit_m: Nonnegative | None = None
+    energy_after_power_limit_j: Nonnegative | None = None
+    power_response_elapsed_s: Nonnegative | None = None
 
 
 METRIC_UNITS = {
@@ -105,6 +111,12 @@ def validate_rover_suite_evidence(report):
             )
             if run["speed_control"]["config"] != program.model_dump(mode="json"):
                 raise ValueError("speed controller settings differ from declared suite settings")
+        elif case.controller == "voltage_guard":
+            program = VoltageBrakeFirmware(
+                brake_threshold_m=case.scenario.brake_threshold_m,
+                timeout_action=case.scenario.timeout_action,
+                **case.voltage_guard.model_dump(),
+            )
         expected_type = f"{type(program).__module__}.{type(program).__qualname__}"
         if run["firmware"]["program"] != expected_type or run["firmware"][
             "parameters"
@@ -197,7 +209,22 @@ def compare_rover_suites(
             before, after = base_cases[name], next_cases[name]
             base_metrics, next_metrics = _metrics(before), _metrics(after)
             metrics = {}
-            for key, unit in METRIC_UNITS.items():
+            units = dict(METRIC_UNITS)
+            if (
+                "auxiliary_terminal_energy_j" in base_metrics
+                or "auxiliary_terminal_energy_j" in next_metrics
+            ):
+                units["auxiliary_terminal_energy_j"] = "J"
+            if "power_limit_time_s" in base_metrics or "power_limit_time_s" in next_metrics:
+                units["power_limit_time_s"] = "s"
+            for key, unit in (
+                ("distance_after_power_limit_m", "m"),
+                ("energy_after_power_limit_j", "J"),
+                ("power_response_elapsed_s", "s"),
+            ):
+                if key in base_metrics or key in next_metrics:
+                    units[key] = unit
+            for key, unit in units.items():
                 a, b = base_metrics.get(key), next_metrics.get(key)
                 delta = None if a is None or b is None else b - a
                 availability = "available" if delta is not None else "missing_evidence"

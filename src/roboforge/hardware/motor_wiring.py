@@ -50,6 +50,21 @@ def resolve_rover_wheels(project: RobotProject, motors: tuple[str, str]) -> list
     return wheels
 
 
+def require_direct_driver_supply(project: RobotProject, driver: str, battery: str) -> None:
+    """Require the selected pack on the driver's direct VM and ground nets."""
+    if not any(c.id == battery for c in project.components):
+        raise ValueError("selected battery does not exist")
+    net_for = {(e.component, e.pin): n.id for n in project.nets for e in n.endpoints}
+    if net_for.get((battery, "P")) is None or net_for.get((battery, "P")) != net_for.get(
+        (driver, "VM")
+    ):
+        raise ValueError("selected battery P must directly supply the selected driver VM net")
+    if net_for.get((battery, "N")) is None or net_for.get((battery, "N")) != net_for.get(
+        (driver, "GND")
+    ):
+        raise ValueError("selected battery N and driver GND must share a net")
+
+
 def resolve_motor_connection(project: RobotProject, motor: str) -> MotorConnection:
     components = {c.id: c for c in project.components}
     component = components.get(motor)

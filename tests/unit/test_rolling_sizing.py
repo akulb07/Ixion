@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from roboforge.hardware.battery import BatteryState, OCVPoint
+from roboforge.hardware.battery import BatteryState
 from roboforge.hardware.powertrain import MotorChannel, Powertrain
 from roboforge.hardware.rolling import run_rolling_bench
 from roboforge.hardware.rolling_runtime import RollingRuntime
@@ -70,16 +70,8 @@ def test_inverse_replays_through_existing_shared_supply_and_rolling_runtime(resi
     assert direct.channels[0].motor.current_a == pytest.approx(
         result.required_motor_current_per_channel_a
     )
-    # Runtime has no auxiliary-load input, so use the solved voltage with a
-    # constant supply to independently check the mechanical demand.
-    terminal = direct.battery.terminal_voltage_v
-    constant = battery.model_copy(
-        update={
-            "internal_resistance_ohm": 0,
-            "ocv_curve": (OCVPoint(soc=0, voltage_v=terminal), OCVPoint(soc=1, voltage_v=terminal)),
-        }
-    )
-    runtime = RollingRuntime(system.model_copy(update={"battery": constant}), BatteryState(), body)
+    runtime = RollingRuntime(system, BatteryState(), body, auxiliary_current_a=0.1)
+    assert runtime.sample.shaft.point == result.point
     assert runtime.sample.acceleration_m_s2 == pytest.approx(demand.acceleration_m_s2)
     assert runtime.sample.contact_force_per_wheel_n == pytest.approx(
         result.required_contact_force_per_wheel_n

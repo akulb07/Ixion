@@ -33,6 +33,11 @@ def test_packaged_reference_inputs_match_the_maintained_examples():
         "rover_wall.yaml",
         "rover_uphill.yaml",
         "rover_sizing.yaml",
+        "rover_power_suite.yaml",
+        "rover_voltage_limit_suite.yaml",
+        "rover_power_response_suite.yaml",
+        "rover_voltage_feedback_suite.yaml",
+        "rover_voltage_error_suite.yaml",
         "rover_feedback_suite.yaml",
     ):
         assert resources.joinpath(name).read_text(encoding="utf-8") == REFERENCE.with_name(

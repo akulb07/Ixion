@@ -1,0 +1,59 @@
+# Declared simulation boundaries, not BMS response or physical cutoff ratings.
+name: rover_voltage_limits
+cases:
+- name: healthy_supply
+  controller: sonar
+  scenario:
+    minimum_pack_voltage_v: 6
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: {response_delay_s: 0.0002}
+    duration_s: 3
+    brake_threshold_m: 0.75
+  acceptance:
+    minimum_front_clearance_m: 0.4
+    maximum_final_speed_m_s: 0.005
+    maximum_terminal_energy_j: 12
+- name: startup_voltage_limit
+  controller: sonar
+  scenario:
+    minimum_pack_voltage_v: 8
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: {response_delay_s: 0.0002}
+    duration_s: 3
+    brake_threshold_m: 0.75
+  acceptance:
+    expected_status: power_limit_reached
+    minimum_front_clearance_m: 0.8
+    maximum_final_speed_m_s: 0
+    maximum_terminal_energy_j: 0
+    maximum_power_limit_time_s: 0
+- name: auxiliary_load_limit
+  controller: sonar
+  scenario:
+    auxiliary_current_a: 2
+    minimum_pack_voltage_v: 7.6
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: {response_delay_s: 0.0002}
+    duration_s: 3
+    brake_threshold_m: 0.75
+  acceptance:
+    expected_status: power_limit_reached
+    minimum_front_clearance_m: 0.8
+    maximum_final_speed_m_s: 0
+    maximum_terminal_energy_j: 0
+    maximum_power_limit_time_s: 0

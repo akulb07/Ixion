@@ -1,13 +1,14 @@
 """Incremental symmetric rolling, with commands held during each interval."""
 
 from roboforge.config import Schema
-from roboforge.core import finite, positive
+from roboforge.core import finite, nonnegative, positive
 
 from .battery import BatteryState
 from .driver import DriverInputs
 from .powertrain import MotorChannel, Powertrain
 from .rolling import RollingBody, RollingSample, rolling_load, rolling_sample, run_rolling_bench
 from .shaft_dynamics import ShaftSample
+from .voltage_limit import VoltageLimitEvent, locate_voltage_limit
 
 
 class RollingStep(Schema):
@@ -16,15 +17,30 @@ class RollingStep(Schema):
     inputs: tuple[DriverInputs, ...]
 
 
+class VoltageLimitedStep(Schema):
+    step: RollingStep | None
+    event: VoltageLimitEvent | None
+
+
 class RollingRuntime:
     """Two equal wheels on a constant grade. A rejected step changes no state."""
 
-    def __init__(self, system: Powertrain, state: BatteryState, body: RollingBody):
+    def __init__(
+        self,
+        system: Powertrain,
+        state: BatteryState,
+        body: RollingBody,
+        *,
+        vcc_v: float = 3.3,
+        auxiliary_current_a: float = 0,
+    ):
         if len(system.channels) != 2 or system.channels[0] != system.channels[1]:
             raise ValueError(
                 "straight-line runtime requires two identical motor channels and speeds"
             )
-        point = system.operating_point(state)
+        vcc = finite(vcc_v, "driver VCC")
+        auxiliary = nonnegative(auxiliary_current_a, "auxiliary current")
+        point = system.operating_point(state, vcc, auxiliary)
         load = rolling_load(body)
         initial = rolling_sample(
             body,
@@ -46,6 +62,8 @@ class RollingRuntime:
         self._system = system
         self._body = body
         self._sample = initial
+        self._vcc_v = vcc
+        self._auxiliary_current_a = auxiliary
 
     @property
     def time_s(self) -> float:
@@ -78,7 +96,13 @@ class RollingRuntime:
             ),
         )
         local = run_rolling_bench(
-            commanded, self._sample.shaft.state, self._body, duration, duration
+            commanded,
+            self._sample.shaft.state,
+            self._body,
+            duration,
+            duration,
+            self._vcc_v,
+            self._auxiliary_current_a,
         )
 
         def absolute(sample, time):
@@ -108,3 +132,46 @@ class RollingRuntime:
         result = RollingStep(start=start, end=end, inputs=commands)
         self._system, self._sample = updated, end
         return result
+
+    def step_until_voltage_limit(
+        self,
+        duration_s: float,
+        threshold_v: float,
+        inputs: tuple[DriverInputs, ...] | None = None,
+    ) -> VoltageLimitedStep:
+        """Advance at most one interval, ending at a declared supply boundary."""
+        duration = positive(duration_s, "voltage-limited rolling step")
+        if finite(self.time_s + duration, "voltage-limited end time") <= self.time_s:
+            raise ValueError("rolling step is too small to advance simulation time")
+        commands = tuple(c.inputs for c in self._system.channels) if inputs is None else inputs
+        if len(commands) != 2:
+            raise ValueError("provide exactly two rolling driver commands")
+        commanded = self._system.model_copy(
+            update={
+                "channels": tuple(
+                    c.model_copy(update={"inputs": command})
+                    for c, command in zip(self._system.channels, commands)
+                )
+            }
+        )
+        if commanded.channels[0] != commanded.channels[1]:
+            raise ValueError(
+                "straight-line runtime requires two identical motor channels and speeds"
+            )
+        event = locate_voltage_limit(
+            commanded,
+            self._sample.shaft.state,
+            (rolling_load(self._body),) * 2,
+            duration,
+            threshold_v,
+            time_s=self.time_s,
+            vcc_v=self._vcc_v,
+            auxiliary_current_a=self._auxiliary_current_a,
+        )
+        elapsed = duration if event is None else event.time_s - self.time_s
+        if event is not None and event.phase == "physics_step" and elapsed <= 0:
+            raise ValueError(
+                "voltage crossing is below simulation time resolution; reduce the step"
+            )
+        step = None if elapsed <= 0 else self.step(elapsed, commands)
+        return VoltageLimitedStep(step=step, event=event)

@@ -447,7 +447,9 @@ def main(argv: list[str] | None = None) -> int:
                 f"{result['status']}: clearance={result['metrics']['final_front_clearance_m']:.4g} m; "
                 f"saved to {args.output}"
             )
-            return 0 if result["status"] == "stopped_before_wall" else 3
+            return (
+                0 if result["status"] in {"stopped_before_wall", "stopped_after_power_limit"} else 3
+            )
         if args.command == "ultrasonic-feedback":
             import json
 

@@ -28,6 +28,16 @@ The starter contains:
   see the [incline limits](rover-inclines.md).
 - `rover_sizing.yaml`: a prescribed speed, acceleration, grade and SOC for the
   [inverse motor/battery sizing check](rover-sizing.md).
+- `rover_power_suite.yaml`: full charge, half charge and half charge with a
+  constant pack-side load; see [moving power conditions](rover-power.md).
+- `rover_voltage_limit_suite.yaml`: healthy supply and declared startup-limit
+  cases, with energy, final-speed and time checks; see [voltage limits](rover-voltage-limits.md).
+- `rover_power_response_suite.yaml`: normal supply plus latched brake and coast
+  continuations, with stopped/unfinished outcomes; see [power responses](rover-power-response.md).
+- `rover_voltage_feedback_suite.yaml`: fresh, slow, stale and clipped readings
+  driving a host voltage guard; see [sampled voltage feedback](rover-voltage-feedback.md).
+- `rover_voltage_error_suite.yaml`: gain, offset and repeatable noise cases;
+  see [imperfect voltage readings](rover-voltage-errors.md).
 - `rover_feedback_suite.yaml`: normal feedback, left/both counter freeze and
   a counter-jump case, with declared simulation checks.
 - `README.md`, `.gitignore` and the original MIT license for the template.

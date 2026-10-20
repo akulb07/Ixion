@@ -128,6 +128,25 @@ loop does not replace validation against a physical reference robot.
    shared battery sag, duty bounds, traction and current-reference screening.
    Unknown ratings remain unassessed; this is one operating point rather than
    a complete trajectory or physical capability claim.
+   The [moving power fixture](rover-power.md) also accepts initial SOC, constant
+   pack-side auxiliary current and supplied driver VCC. It retains auxiliary
+   energy during braking and separate power-condition cases. Automatic regulator
+   budgeting, MCU supply behavior, physical BMS/cutoff and validation remain open.
+   A [declared voltage boundary](rover-voltage-limits.md) now terminates a run at
+   a proposed command or a bounded crossing within one Euler step, preserving
+   the final speed. An explicit [post-limit driver response](rover-power-response.md)
+   can then latch coast or brake and continue the motion with supplies retained.
+   Separate criteria check travel and elapsed time to the stopped-speed threshold;
+   unfinished motion and wall contact remain distinct. Electrical disconnection,
+   MCU supply behavior and physical cutoff validation remain open.
+   An [ideal sampled voltage monitor](rover-voltage-feedback.md) now delivers
+   quantized observations after a configured conversion delay. A host voltage
+   guard brakes on low, stale or clipped readings, with output changes on control
+   ticks. This is a fixture input; MCU ADC pins and divider circuitry remain open.
+   Optional [gain, offset and bounded noise](rover-voltage-errors.md) now perturb
+   the captured voltage before quantization. Captures preserve the source and
+   repeatable error draw for audit while firmware receives only observations.
+   These are declared assumptions; physical sensor calibration remains open.
 4. **C:** GPIO/PWM/I2C timing, MPU6050 register subset and HC-SR04 trigger/echo.
    Test against deterministic physical inputs and document unsupported registers.
    Ideal [ultrasonic timing](ultrasonic-model.md) now converts supplied distances to

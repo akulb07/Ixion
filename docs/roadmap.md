@@ -166,7 +166,92 @@ unassessed. The installed starter includes a sizing input. This extends partial
 Phases B/F/G; it doesn't establish a startup trajectory, thermal capability,
 mission runtime, static hill holding or physical accuracy.
 
+The [moving rover power conditions](rover-power.md) now connect initial SOC,
+constant pack-side auxiliary current and supplied driver VCC to every rolling
+solve. A full/half-charge/load suite retains separate conditions and checks;
+schema-9 evidence includes auxiliary energy and voltage/charge traces. Older
+level/incline encodings remain compatible. This extends partial Phases B/E/F/G;
+automatic electronics budgeting, MCU supply behavior, cutoff/BMS simulation and
+physical battery validation remain ahead.
+
+A [declared pack-voltage boundary](rover-voltage-limits.md) now checks proposed
+commands and locates the first crossing within an Euler interval, including
+interior OCV-knot dips. The final motion state, bounded time uncertainty and
+event remain recorded. Separate suite bounds check final speed, terminal energy
+and the conservative limit time. This extends partial Phases B/E/F/G; physical
+BMS behavior, disconnection and measured cutoff validation remain
+open. A declared boundary is not a simulated stopped rover.
+
+An explicit [post-limit coast/brake response](rover-power-response.md) now keeps
+motion running after that boundary, with the driver and logic supplies retained.
+The override latches across voltage rebound and later firmware requests. Split
+steps preserve the control/poll grid; separate outcomes and bounds check stopped
+speed, post-limit travel, elapsed time and wall contact. The starter includes
+paired response cases, and the offline viewer retains applied driver modes.
+This extends partial Phases B/D/E/F/G. Physical disconnection, MCU voltage-sensing
+circuitry, restart and measured shutdown behavior remain open.
+
+A first [sampled voltage-feedback loop](rover-voltage-feedback.md) now connects an
+ideal quantized pack-voltage monitor to host firmware. Conversion completion and
+motor-control ticks stay separate; fresh, slow, stale and clipped cases retain
+their observed readings, requests and stopping motion. Pending conversions stay
+pending in saved reports. Schema-12 views and version-6 build packets preserve
+these conditions. This extends partial Phases C–G; actual MCU ADC/divider wiring,
+sensor power draw and drift, electrical disconnection and physical measurements
+remain open.
+
+The voltage fixture now also accepts [declared gain, offset and bounded noise](rover-voltage-errors.md).
+Each capture has a repeatable error draw; firmware only sees the resulting
+quantized observation. A six-case starter suite demonstrates masked low-voltage
+conditions, early braking and noise-dependent detection time. Reports retain
+source and error evidence, and version-7 build packets preserve the conditions.
+This is further partial Phase C–G work; physical ADC circuitry, calibration from
+measurements and validated sensor specifications remain open.
+
 ## What would make this worth using
+
+The [hardware workspace](hardware-workspace.md) now loads bundled rover suites,
+edits declared part and experiment values, runs design checks and submits saved
+hardware jobs from the browser. Results reuse the recorded-evidence viewer;
+applied drafts survive browser reloads and saved runs recover across service
+restarts. Import/export keeps complete setup files. This starts partial Phase H
+integration alongside the CLI, with the same straight-line model limits.
+
+An interactive reference assembly view now renders the declared wheel radius
+and track width with labeled illustrative component shapes and placement.
+Scene picking updates the part inspector, and orbit/top/reset camera controls
+work in the browser. This adds partial Phase H visualization without changing
+the straight-line dynamics or claiming CAD geometry and 3D contact simulation.
+
+The workspace sizing view now calculates speed/acceleration/slope demands using
+the existing shared-battery solver. It retains failed and unassessed checks,
+marks stale estimates after edits, pins a design baseline and compares matched
+conditions. Estimate exports include both inputs and evidence. This advances
+partial Phases F/H; mission estimates and physical validation remain ahead.
+
+The workspace wiring editor now shows net membership, pin capabilities and MCU
+assignments, with batch apply, discard and guarded undo. Structural validation
+keeps incomplete edits out of saved setups; electrical diagnostics remain visible.
+A changed MCU net is used by the runtime's resolved output map. This advances
+partial Phases A/H without claiming physical wire routing or circuit simulation.
+
+Saved hardware results now link a 3D follow camera to recorded motion, voltage,
+current, PWM, counters and event deliveries. Playback, exact sample stepping,
+trace seeking and event jumps share one cursor; saved project geometry remains
+independent of current drafts. Failed/model-error cases and exact terminal times
+remain visible. This advances partial Phase H inspection, not general 3D physics.
+
+Saved hardware suites can now be selected as a baseline/candidate pair in the
+workspace. Comparison enforces matching normalized conditions and policies,
+retains failed/model-error evidence, lists declared design changes and links both
+source replays. Portable JSON includes both reports and their byte hashes; offline
+HTML reuses the paired evidence viewer. This advances partial Phases F/G/H.
+
+The next work moves beyond workspace integration into broader assembly geometry,
+component/peripheral coverage and measured reference validation. The broader
+completion estimate must still account for full
+robot mechanics, peripheral compatibility, component coverage, physical reference
+measurements and the later manipulation work.
 
 The goal is to catch an expensive design mistake before buying parts. A long
 feature list won't mean much if the reference robot doesn't behave convincingly.

@@ -1,0 +1,361 @@
+# Assumed sensor errors for software experiments; not measured ADC specifications.
+name: voltage_measurement_errors
+cases:
+- name: ideal_low
+  scenario:
+    voltage_monitor:
+      full_scale_v: 10.0
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 8
+    maximum_sample_age_s: 0.01
+    log_decisions: false
+  target_speed_m_s: 0.2
+  target_ramp_s: 1.0
+  encoder_health:
+    maximum_wheel_speed_m_s: 2.0
+    maximum_speed_difference_m_s: 0.05
+    no_progress_timeout_s: 0.2
+    disagreement_timeout_s: 0.1
+    minimum_check_target_m_s: 0.05
+    minimum_check_pwm_duty: 0.05
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: low_voltage
+    minimum_front_clearance_m: 0.1
+    maximum_peak_pack_current_a: null
+    maximum_fault_detection_delay_s: null
+    maximum_final_speed_m_s: 0.005
+- name: gain_reads_high
+  scenario:
+    voltage_monitor:
+      full_scale_v: 10.0
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+      errors:
+        gain: 1.05
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 8
+    maximum_sample_age_s: 0.01
+    log_decisions: false
+  target_speed_m_s: 0.2
+  target_ramp_s: 1.0
+  encoder_health:
+    maximum_wheel_speed_m_s: 2.0
+    maximum_speed_difference_m_s: 0.05
+    no_progress_timeout_s: 0.2
+    disagreement_timeout_s: 0.1
+    minimum_check_target_m_s: 0.05
+    minimum_check_pwm_duty: 0.05
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: obstacle
+    minimum_front_clearance_m: 0.1
+    maximum_peak_pack_current_a: null
+    maximum_fault_detection_delay_s: null
+    maximum_final_speed_m_s: 0.005
+- name: ideal_above_threshold
+  scenario:
+    voltage_monitor:
+      full_scale_v: 10.0
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 7.5
+    maximum_sample_age_s: 0.01
+    log_decisions: false
+  target_speed_m_s: 0.2
+  target_ramp_s: 1.0
+  encoder_health:
+    maximum_wheel_speed_m_s: 2.0
+    maximum_speed_difference_m_s: 0.05
+    no_progress_timeout_s: 0.2
+    disagreement_timeout_s: 0.1
+    minimum_check_target_m_s: 0.05
+    minimum_check_pwm_duty: 0.05
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: obstacle
+    minimum_front_clearance_m: 0.1
+    maximum_peak_pack_current_a: null
+    maximum_fault_detection_delay_s: null
+    maximum_final_speed_m_s: 0.005
+- name: offset_reads_low
+  scenario:
+    voltage_monitor:
+      full_scale_v: 10.0
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+      errors:
+        offset_v: -0.5
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 7.5
+    maximum_sample_age_s: 0.01
+    log_decisions: false
+  target_speed_m_s: 0.2
+  target_ramp_s: 1.0
+  encoder_health:
+    maximum_wheel_speed_m_s: 2.0
+    maximum_speed_difference_m_s: 0.05
+    no_progress_timeout_s: 0.2
+    disagreement_timeout_s: 0.1
+    minimum_check_target_m_s: 0.05
+    minimum_check_pwm_duty: 0.05
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: low_voltage
+    minimum_front_clearance_m: 0.1
+    maximum_peak_pack_current_a: null
+    maximum_fault_detection_delay_s: null
+    maximum_final_speed_m_s: 0.005
+- name: noise_seed_0
+  scenario:
+    voltage_monitor:
+      full_scale_v: 10.0
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+      errors:
+        noise_bound_v: 0.05
+        seed: 0
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 7.79
+    maximum_sample_age_s: 0.01
+    log_decisions: false
+  target_speed_m_s: 0.2
+  target_ramp_s: 1.0
+  encoder_health:
+    maximum_wheel_speed_m_s: 2.0
+    maximum_speed_difference_m_s: 0.05
+    no_progress_timeout_s: 0.2
+    disagreement_timeout_s: 0.1
+    minimum_check_target_m_s: 0.05
+    minimum_check_pwm_duty: 0.05
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: low_voltage
+    minimum_front_clearance_m: 0.1
+    maximum_peak_pack_current_a: null
+    maximum_fault_detection_delay_s: null
+    maximum_final_speed_m_s: 0.005
+- name: noise_seed_1
+  scenario:
+    voltage_monitor:
+      full_scale_v: 10.0
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+      errors:
+        noise_bound_v: 0.05
+        seed: 1
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 7.79
+    maximum_sample_age_s: 0.01
+    log_decisions: false
+  target_speed_m_s: 0.2
+  target_ramp_s: 1.0
+  encoder_health:
+    maximum_wheel_speed_m_s: 2.0
+    maximum_speed_difference_m_s: 0.05
+    no_progress_timeout_s: 0.2
+    disagreement_timeout_s: 0.1
+    minimum_check_target_m_s: 0.05
+    minimum_check_pwm_duty: 0.05
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: low_voltage
+    minimum_front_clearance_m: 0.1
+    maximum_peak_pack_current_a: null
+    maximum_fault_detection_delay_s: null
+    maximum_final_speed_m_s: 0.005

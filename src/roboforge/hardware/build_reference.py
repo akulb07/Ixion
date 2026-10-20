@@ -17,6 +17,7 @@ from .rover_firmware import ObstacleBrakeFirmware
 from .rover_suite import RoverSuiteConfig
 from .speed_firmware import EncoderSpeedFirmware
 from .validation import check_project
+from .voltage_firmware import VoltageBrakeFirmware
 
 MAX_ENTRY_BYTES = 2 * 1024 * 1024
 MAX_TOTAL_BYTES = 8 * 1024 * 1024
@@ -80,6 +81,12 @@ def _case_config(project, suite, case_name):
             target_ramp_s=case.target_ramp_s,
             brake_threshold_m=case.scenario.brake_threshold_m,
             timeout_action=case.scenario.timeout_action,
+        )
+    elif case.controller == "voltage_guard":
+        program = VoltageBrakeFirmware(
+            brake_threshold_m=case.scenario.brake_threshold_m,
+            timeout_action=case.scenario.timeout_action,
+            **case.voltage_guard.model_dump(),
         )
     return case, {
         "execution": "host_python",
@@ -262,7 +269,25 @@ def build_reference_files(
             }
         )
     manifest = {
-        "schema_version": 2
+        "schema_version": 7
+        if suite is not None
+        and any(
+            c.scenario.voltage_monitor is not None and c.scenario.voltage_monitor.errors is not None
+            for c in suite.cases
+        )
+        else 6
+        if suite is not None and any(c.scenario.voltage_monitor is not None for c in suite.cases)
+        else 5
+        if suite is not None and any(c.scenario.voltage_limit_action != "end" for c in suite.cases)
+        else 4
+        if suite is not None
+        and any(
+            c.scenario.minimum_pack_voltage_v is not None or c.acceptance.uses_extended_bounds
+            for c in suite.cases
+        )
+        else 3
+        if suite is not None and any(not c.scenario.uses_default_power for c in suite.cases)
+        else 2
         if suite is not None and any(c.scenario.grade_rad != 0 for c in suite.cases)
         else 1,
         "artifact": "hardware_build_reference",
@@ -344,7 +369,7 @@ def verify_build_reference(path: str | Path) -> dict:
         )
         if (
             type(manifest.get("schema_version")) is not int
-            or manifest["schema_version"] not in (1, 2)
+            or manifest["schema_version"] not in (1, 2, 3, 4, 5, 6, 7)
             or manifest.get("artifact") != "hardware_build_reference"
         ):
             raise ValueError("unsupported build reference manifest")

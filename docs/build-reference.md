@@ -54,10 +54,18 @@ limited to 2 MiB, and total uncompressed content to 8 MiB. Current packets conta
 using the installed exporter format; incompatible future format changes need a
 new manifest version.
 
-Level-only packets retain manifest version 1 and its scenario encoding. Packets
-including a [graded suite](rover-inclines.md) use version 2 so the new physical
-condition can't be mistaken for a level case by an older verifier. The current
-verifier supports both versions.
+Packets with default power conditions and level-only scenarios retain manifest
+version 1 and its scenario encoding. Default-power [graded suites](rover-inclines.md)
+use version 2. Suites with any [nondefault power conditions](rover-power.md) use
+version 3, including when the selected case itself uses defaults. The current
+verifier also supports version 4 for [declared voltage limits and operating bounds](rover-voltage-limits.md).
+Suites with a [post-limit coast/brake response](rover-power-response.md) use version 5.
+Suites with a [sampled voltage monitor](rover-voltage-feedback.md) use version 6,
+including its conversion settings and the selected voltage-guard policy.
+Suites with [declared voltage-sensor errors](rover-voltage-errors.md) use version 7
+and retain gain, offset, noise bound and seed.
+Each version preserves its generated
+configuration instead of allowing an older verifier to ignore new conditions.
 
 Checksums detect changed contents but don't authenticate who made the packet.
 Verification doesn't establish engineering readiness. Declared part metadata and

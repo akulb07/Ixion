@@ -58,6 +58,12 @@ Unsupported paths or parts are rejected; they cannot silently produce an echo.
 Declared voltage incompatibilities still reject the project. Unknown ratings
 remain warnings. This is no claim of ESP32 binary execution. Battery supply and
 3.3 V logic are model inputs, not a simulation of regulator and power nets.
+The scenario can also declare [initial SOC, a constant pack-side auxiliary load
+and supplied driver VCC](rover-power.md); these feed the shared electrical solve
+without executing regulator, MCU power or BMS behavior.
+A [declared voltage boundary](rover-voltage-limits.md) can end the estimate,
+or an explicit [coast/brake response](rover-power-response.md) can keep motion
+running with a latched driver override and retained supplies.
 
 The baseline uses a wall 1 m away, front offset 0.1 m, sensor offset 0.08 m,
 0.002 kg m² rotating inertia per wheel, friction coefficient 0.8 and 80% driven
@@ -127,7 +133,7 @@ the initial electrical and traction state. The [ramped-start example](rover-firm
 uses this to start at reduced power. A sharp reduction at speed can still hit the
 power model's explicit regeneration limit; that is an error, not a clipped result.
 
-The command returns 0 only for `stopped_before_wall`, 3 for the other valid
+The command returns 0 for `stopped_before_wall` or `stopped_after_power_limit`, 3 for the other valid
 outcomes, and 2 for invalid inputs or runtime/file errors. Failed simulations do
 not produce a complete report. Scenarios accept YAML or JSON up to 64 KiB, reject
 duplicate keys and unknown fields, and allow at most 10,000 physics steps. The

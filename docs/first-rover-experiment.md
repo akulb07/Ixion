@@ -48,6 +48,32 @@ candidate meets the common suite limits; it doesn't rank every design tradeoff.
 The suite deliberately refuses comparisons with different mission/controller
 settings or acceptance policies.
 
+## Check the power conditions too
+
+The starter also includes `rover_power_suite.yaml` for full charge, half charge
+and a pack-side auxiliary allowance, plus `rover_voltage_limit_suite.yaml` for
+declared voltage boundaries and energy/final-speed checks. Use the same suite
+for both designs:
+
+```sh
+ixion rover-suite robot.yaml rover_voltage_limit_suite.yaml --output supply-baseline.json --junit supply-baseline.xml
+ixion rover-suite robot-payload.yaml rover_voltage_limit_suite.yaml --output supply-payload.json --junit supply-payload.xml
+ixion rover-compare supply-baseline.json supply-payload.json --output supply-comparison.json
+ixion rover-report supply-comparison.json --output supply-comparison.html
+```
+
+Check the individual criteria even when the rover stops before the wall. It can
+still exceed a declared energy budget. The startup-limit cases deliberately end
+at time zero; a later voltage boundary can retain a moving rover. Neither outcome
+simulates a BMS or proves a physical shutdown. See the [power conditions](rover-power.md)
+and [voltage-boundary scope](rover-voltage-limits.md) before choosing your own limits.
+
+For extra travel after a declared driver response, run the same workflow with
+`rover_power_response_suite.yaml`. It compares a latched brake with coast while
+keeping supplies modeled. Check both the stopped/unfinished outcome and the
+[post-limit distance and elapsed criteria](rover-power-response.md); a short trace
+that ends still moving isn't a completed stop.
+
 ## Keep the design details with the experiment
 
 ```sh

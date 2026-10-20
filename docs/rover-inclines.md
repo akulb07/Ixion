@@ -66,8 +66,12 @@ negative speed also aborts the forward fixture; review the time step if braking
 crossed the small positive stop threshold. The estimate ends at that threshold.
 It doesn't establish that the rover can stay parked on a slope or restart safely.
 
-Level runs retain schema 7 and omit zero-valued grade fields from their saved
-configuration/body. Uphill runs use schema 8 with matching scenario/body grade.
-Build-reference packets containing a graded suite use manifest version 2;
+With default power conditions, level runs retain schema 7 and omit zero-valued
+grade fields from their saved configuration/body. Uphill runs use schema 8 with
+matching scenario/body grade. Nondefault [power conditions](rover-power.md) use
+schema 9 for either grade, or schema 10 with a [declared voltage limit](rover-voltage-limits.md).
+Build-reference packets containing a graded suite
+use manifest version 2 with default power; nondefault-power suites use version 3.
+Declared voltage limits or the new operating bounds use version 4. Default-power
 level-only packets keep version 1. Older level suites and build packets remain
 supported. These are estimates pending physical validation and add no 3D mesh.

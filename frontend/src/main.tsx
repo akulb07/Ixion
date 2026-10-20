@@ -12,6 +12,7 @@ import { SlamPanel } from "./SlamPanel";
 import { ControllerSetup } from "./ControllerSetup";
 import { ControlPanel } from "./ControlPanel";
 import { FaultEditor } from "./FaultEditor";
+import { HardwarePanel } from "./HardwarePanel";
 import { nextTime } from "./math.mjs";
 import type {
   Config,
@@ -32,9 +33,18 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 function ActivityIcon({
   kind,
 }: {
-  kind: "files" | "plan" | "inspect" | "history" | "compare" | "sweeps";
+  kind:
+    | "files"
+    | "plan"
+    | "inspect"
+    | "history"
+    | "compare"
+    | "sweeps"
+    | "hardware";
 }) {
   const paths = {
+    hardware:
+      "M7 5h10v14H7z M3 8h4 M3 12h4 M3 16h4 M17 8h4 M17 12h4 M17 16h4 M10 9h4v6h-4z",
     files: "M8 3h11v15H8z M5 7H3v14h11v-2",
     plan: "M5 6h4l6 12h4 M5 18h4l6-12h4 M3 4h2v4H3z M19 16h2v4h-2z",
     inspect: "M4 4h16v16H4z M4 10h16 M12 10v10",
@@ -137,8 +147,8 @@ function Chart({
 
 function App() {
   const [workspaceView, setWorkspaceView] = useState<
-    "simulation" | "comparison" | "sweeps"
-  >("simulation");
+    "simulation" | "comparison" | "sweeps" | "hardware"
+  >("hardware");
   const comparisonOpen = workspaceView === "comparison";
   const [setupMode, setSetupMode] = useState<"simulation" | "planning">(
     "simulation",
@@ -212,6 +222,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (workspaceView === "hardware") return;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
     const refresh = async () => {
@@ -233,7 +244,7 @@ function App() {
       disposed = true;
       clearTimeout(timer);
     };
-  }, [limit]);
+  }, [limit, workspaceView]);
 
   useEffect(() => {
     if (!selected) return;
@@ -423,13 +434,27 @@ function App() {
           <span>Ixion</span>
         </div>
         <div className="top-context">
-          {draft?.name ?? "workspace"} — Ixion
+          {workspaceView === "hardware"
+            ? "Robot hardware"
+            : (draft?.name ?? "workspace")}{" "}
+          — Ixion
         </div>
         <a className="text-link" href="/docs" target="_blank" rel="noreferrer">
           API reference ↗
         </a>
       </header>
       <nav className="activitybar" aria-label="Workspace navigation">
+        <button
+          title="Robot hardware"
+          aria-label="Open robot hardware"
+          aria-pressed={workspaceView === "hardware"}
+          onClick={() => {
+            setPlaying(false);
+            setWorkspaceView("hardware");
+          }}
+        >
+          <ActivityIcon kind="hardware" />
+        </button>
         <button
           title="Simulation setup"
           aria-label="Simulation setup"
@@ -510,17 +535,21 @@ function App() {
           <span>workspace</span>
           <span aria-hidden="true">›</span>
           <h1>
-            {workspaceView === "sweeps"
-              ? "Parameter sweeps"
-              : comparisonOpen
-                ? "Run comparison"
-                : setupMode === "planning"
-                  ? "Path planning"
-                  : "Simulation"}
+            {workspaceView === "hardware"
+              ? "Robot hardware"
+              : workspaceView === "sweeps"
+                ? "Parameter sweeps"
+                : comparisonOpen
+                  ? "Run comparison"
+                  : setupMode === "planning"
+                    ? "Path planning"
+                    : "Simulation"}
           </h1>
-          {jsonDirty && <span className="unsaved">Unapplied edits</span>}
+          {jsonDirty && workspaceView === "simulation" && (
+            <span className="unsaved">Unapplied edits</span>
+          )}
         </div>
-        <div className="heading-actions">
+        <div className="heading-actions" hidden={workspaceView === "hardware"}>
           <button onClick={() => importInput.current?.click()} disabled={busy}>
             ↑ Import setup
           </button>
@@ -1301,6 +1330,7 @@ function App() {
           </div>
         </aside>
       </main>
+      <HardwarePanel visible={workspaceView === "hardware"} />
       <ComparisonPanel visible={comparisonOpen} onReplay={select} />
       <ExperimentPanel
         visible={workspaceView === "sweeps"}
@@ -1312,7 +1342,11 @@ function App() {
         <span>
           <span className="dot" /> {version ? "Local" : "Connecting…"}
           <span className="status-separator">
-            {selected ? (job?.status ?? "Loading run") : "Draft"}
+            {workspaceView === "hardware"
+              ? "Hardware workspace"
+              : selected
+                ? (job?.status ?? "Loading run")
+                : "Draft"}
           </span>
         </span>
         <span>

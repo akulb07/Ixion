@@ -7,7 +7,7 @@ const node = (tag, text, className) => {
   return n;
 };
 const fmt = (value, unit = "", digits = 4) => value === null || value === undefined ? "unavailable" : `${Number(value).toFixed(digits)}${unit}`;
-const colors = ["#b39aff", "#64c9d4", "#e7b970", "#ea91b2"];
+const colors = ["#b39aff", "#64c9d4", "#e7b970", "#ea91b2", "#91c9a2", "#c8b9e4"];
 let active, peer = null, cursor = 0, plots = [];
 const svgNS = "http://www.w3.org/2000/svg";
 function svgNode(tag, attributes, text) {
@@ -40,7 +40,8 @@ function chart(title, series) {
   series.forEach((s, i) => {const label = node("span", s.name); label.style.setProperty("--series", colors[i]); legend.append(label);});
   heading.append(legend); box.append(heading);
   const svg = svgNode("svg", {viewBox:"0 0 1000 135", preserveAspectRatio:"none", role:"img", "aria-label":title});
-  const end = Math.max(active.samples.at(-1).time_s, peer?.samples.at(-1).time_s || 0) || 1;
+  const extent = Math.max(active.samples.at(-1).time_s, peer?.samples.at(-1).time_s || 0);
+  const end = extent || 1;
   let low = 0, high = 0;
   series.forEach(s => s.points.forEach(p => {low = Math.min(low, p[1]); high = Math.max(high, p[1]);}));
   if (low === high) high = low + 1;
@@ -50,10 +51,13 @@ function chart(title, series) {
     svg.append(svgNode("line", {x1:65, x2:985, y1:y(value), y2:y(value), stroke:"#252733"}));
     svg.append(svgNode("text", {x:0, y:y(value)+3}, value.toFixed(3)));
   }
-  svg.append(svgNode("text", {x:65,y:128}, "0 s"), svgNode("text", {x:985,y:128,"text-anchor":"end"}, `${end.toFixed(3)} s`));
+  svg.append(svgNode("text", {x:65,y:128}, "0 s"), svgNode("text", {x:985,y:128,"text-anchor":"end"}, extent ? `${extent.toFixed(3)} s` : "single recorded instant"));
   series.forEach((s,i) => {
     const points = envelopePoints(s.points);
     svg.append(svgNode("polyline", {points:points.map(p => `${65+p[0]/end*920},${y(p[1])}`).join(" "), fill:"none", stroke:colors[i], "stroke-width":1.6}));
+    if(points.length===1 || (points.length===2 && points[0][0]===points[1][0] && points[0][1]===points[1][1])) {
+      svg.append(svgNode("circle",{cx:65+points[0][0]/end*920,cy:y(points[0][1]),r:3,fill:colors[i]}));
+    }
   });
   const line = svgNode("line", {x1:65,x2:65,y1:12,y2:110,stroke:"#eee7ff","stroke-dasharray":"3 3"});
   svg.append(line); plots.push({line,end});
@@ -70,13 +74,18 @@ function seek(time) {
 }
 function inspect() {
   const sample = active.samples[cursor];
+  const voltageReading=active.voltage_monitor?.readings.findLast(c=>c.observation.time_s<=sample.time_s)?.observation;
   el("time").textContent=fmt(sample.time_s," s");
   el("sample-index").textContent=`${cursor+1} / ${active.samples.length} samples`;
   el("readout").replaceChildren(...[
     `Travel ${fmt(sample.distance_m," m")}`, `Speed ${fmt(sample.speed_m_s," m/s")}`,
     `Clearance ${fmt(sample.front_clearance_m," m")}`, `Pack ${fmt(sample.pack_voltage_v," V",3)}`,
     `Charge ${fmt(sample.soc*100,"%",2)}`, `Observed L/R ${sample.encoder_counts.left} / ${sample.encoder_counts.right}`,
-    `Decoded L/R ${sample.decoded_encoder_counts.left} / ${sample.decoded_encoder_counts.right}`
+    `Decoded L/R ${sample.decoded_encoder_counts.left} / ${sample.decoded_encoder_counts.right}`,
+    ...(sample.driver_modes ? [`Driver L/R ${sample.driver_modes.join(" / ")}`] : []),
+    ...(sample.interval_start ? [`Interval from ${fmt(sample.interval_start.time_s," s")} · starting pack power ${fmt(sample.interval_start.pack_power_w," W")}`] : []),
+    ...(active.power_response && sample.time_s===active.power_response.time_s ? ["Boundary sample before the driver override; replacement command is in the response event"] : []),
+    ...(active.voltage_monitor ? [voltageReading ? `Delivered voltage ${fmt(voltageReading.voltage_v," V")} · sampled at ${fmt(voltageReading.sample_time_s," s")}${voltageReading.over_range ? " · OVER RANGE" : ""}` : "Voltage monitor: no delivered reading at this cursor"] : [])
   ].map(text => node("span",text)));
   plots.forEach(p => {const x=65+sample.time_s/p.end*920; p.line.setAttribute("x1",x); p.line.setAttribute("x2",x);});
 }
@@ -157,11 +166,25 @@ function selectCase(index) {
   if(!active) return;
   const grade=active.grade_rad ?? 0;
   el("fixture-scope").textContent=grade === 0 ? "FIXTURE · level straight travel · distances along the lane" : `FIXTURE · ${fmt(grade*180/Math.PI,"°",3)} uphill · distances along the lane · stop threshold does not establish hill holding`;
+  const power=active.power_conditions ?? {initial_soc:1,auxiliary_current_a:0,vcc_v:3.3};
+  el("power-scope").textContent=`POWER · initial SOC ${fmt(power.initial_soc*100,"%",2)} · auxiliary ${fmt(power.auxiliary_current_a," A pack-side")} · driver VCC ${fmt(power.vcc_v," V")} · regulator and BMS behavior unmodeled`;
+  if(power.minimum_pack_voltage_v !== undefined) el("power-scope").textContent+=` · declared voltage limit ${fmt(power.minimum_pack_voltage_v," V")} · `+(power.voltage_limit_action ? `latched ${power.voltage_limit_action} driver response; pack and logic supplies retained` : "run boundary, no disconnection or stopped-state prediction");
+  if(active.power_limit_event?.phase === "command_boundary") el("power-scope").textContent+=" · proposed motor command checked before the next motion interval";
+  if(active.voltage_monitor) {
+    const monitor=active.voltage_monitor.config, errors=monitor.errors;
+    el("power-scope").textContent+=` · ${errors ? "voltage monitor with declared errors" : "ideal voltage monitor"} ${monitor.resolution_bits}-bit · conversion ${fmt(monitor.conversion_s," s")} · no MCU ADC circuit model`;
+    if(errors) el("power-scope").textContent+=` · gain ${fmt(errors.gain)} · offset ${fmt(errors.offset_v," V")} · noise ±${fmt(errors.noise_bound_v," V")} · seed ${errors.seed}`;
+  }
   el("metrics").replaceChildren(...[
     ["FINAL CLEARANCE",fmt(active.metrics.final_front_clearance_m," m")],
     ["BRAKE COMMAND",fmt(active.metrics.brake_command_time_s," s")],
     ["PEAK PACK CURRENT",fmt(active.metrics.peak_sampled_pack_current_a," A")],
-    ["BRAKE REASON",active.brake_reason || "none"]
+    ["BRAKE REASON",active.brake_reason || "none"],
+    ...(power.minimum_pack_voltage_v === undefined ? [] : [["POWER LIMIT",active.power_limit_event ? fmt(active.power_limit_event.time_s," s") : "not reached"]]),
+    ...(active.power_limit_event ? [[active.power_limit_event.phase === "command_boundary" ? "PROPOSED SUPPLY" : "BOUNDARY VOLTAGE",fmt(active.power_limit_event.voltage_v," V")]] : []),
+    ...(power.voltage_limit_action ? [["DRIVER RESPONSE",active.power_response?.action || "not triggered"]] : []),
+    ...(active.power_response ? [["TRAVEL AFTER LIMIT",fmt(active.metrics.distance_after_power_limit_m," m")],["RESPONSE ELAPSED",fmt(active.metrics.power_response_elapsed_s," s")],["FINAL SPEED",fmt(active.samples.at(-1).speed_m_s," m/s")]] : []),
+    ...(active.voltage_monitor ? [["VOLTAGE READINGS",String(active.voltage_monitor.readings.length)],["CONVERSION AT RUN END",active.voltage_monitor.pending ? "pending" : "none"]] : [])
   ].map(([label,value]) => {const card=node("div",undefined,"metric");card.append(node("span",label),node("strong",value));return card;}));
   el("playhead").max=String(active.samples.length-1); el("playhead").value="0";
   el("charts").replaceChildren();
@@ -182,6 +205,7 @@ function selectCase(index) {
   ]);
   const pwm=[sampled("left",s => s.driver_pwm_duty[0]),sampled("right",s => s.driver_pwm_duty[1])];
   const current=[sampled("pack",s => s.pack_current_a)];
+  if(active.power_conditions) current.push(sampled("auxiliary",s=>s.auxiliary_current_a));
   if(peer) {
     pwm.push({name:`${peerLabel} left`,points:peer.samples.map(s => [s.time_s,s.driver_pwm_duty[0]])});
     pwm.push({name:`${peerLabel} right`,points:peer.samples.map(s => [s.time_s,s.driver_pwm_duty[1]])});
@@ -190,7 +214,21 @@ function selectCase(index) {
   const benchCurrent=benchSeries("pack_current_a"); if(benchCurrent) current.push(benchCurrent);
   chart("DRIVER PWM · duty",pwm); chart("BATTERY CURRENT · A",current);
   for(const [field,title] of [["pack_voltage_v","BATTERY VOLTAGE · V"],["distance_m","TRAVEL · m"]]) {
-    const measured=benchSeries(field); if(measured) chart(title,[sampled("simulated",s=>s[field]),measured]);
+    const measured=benchSeries(field);
+    if(measured || (active.power_conditions && field==="pack_voltage_v")) {
+      const series=[sampled("simulated",s=>s[field])];
+      if(peer) series.push({name:`${peerLabel} simulated`,points:peer.samples.map(s=>[s.time_s,s[field]])});
+      if(measured) series.push(measured);
+      if(field==="pack_voltage_v" && active.voltage_monitor) series.push({name:"monitor (delivered)",points:active.voltage_monitor.readings.map(c=>[c.observation.time_s,c.observation.voltage_v])});
+      if(field==="pack_voltage_v" && peer?.voltage_monitor) series.push({name:`${peerLabel} monitor (delivered)`,points:peer.voltage_monitor.readings.map(c=>[c.observation.time_s,c.observation.voltage_v])});
+      if(field==="pack_voltage_v" && power.minimum_pack_voltage_v !== undefined) series.push({name:"declared voltage limit",points:[[active.samples[0].time_s,power.minimum_pack_voltage_v],[active.samples.at(-1).time_s,power.minimum_pack_voltage_v]]});
+      chart(title,series);
+    }
+  }
+  if(active.power_conditions) {
+    const charge=[sampled("SOC",s=>100*s.soc)];
+    if(peer) charge.push({name:`${peerLabel} SOC`,points:peer.samples.map(s=>[s.time_s,100*s.soc])});
+    chart("BATTERY CHARGE · %",charge);
   }
   el("checks").replaceChildren();
   if(!selected.checks.length) el("checks").append(node("p","No acceptance policy is attached to this individual run."));

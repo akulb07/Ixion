@@ -1,0 +1,166 @@
+# Ideal sampled voltage feedback; 8 V is illustrative, not a battery cutoff recommendation.
+name: sampled_voltage_feedback
+cases:
+- name: fresh_voltage
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 8
+    maximum_sample_age_s: 0.01
+  scenario:
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: &id001
+      response_delay_s: 0.0002
+      sound_speed_m_s: 340.0
+      minimum_distance_m: 0.02
+      maximum_distance_m: 4.0
+      minimum_trigger_s: 1.0e-05
+      minimum_cycle_s: 0.06
+      timeout_s: 0.03
+    imu: null
+    serial: null
+    encoder_faults: &id002 []
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+    voltage_monitor:
+      full_scale_v: 10
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: low_voltage
+    minimum_front_clearance_m: 0.8
+    maximum_final_speed_m_s: 0.005
+- name: slow_voltage
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 8
+    maximum_sample_age_s: 0.05
+  scenario:
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: *id001
+    imu: null
+    serial: null
+    encoder_faults: *id002
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+    voltage_monitor:
+      full_scale_v: 10
+      resolution_bits: 12
+      conversion_s: 0.023
+      poll_every_steps: 10
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: low_voltage
+    minimum_front_clearance_m: 0.8
+    maximum_final_speed_m_s: 0.005
+- name: stale_voltage
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 8
+    maximum_sample_age_s: 0.01
+  scenario:
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: *id001
+    imu: null
+    serial: null
+    encoder_faults: *id002
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+    voltage_monitor:
+      full_scale_v: 10
+      resolution_bits: 12
+      conversion_s: 0.023
+      poll_every_steps: 10
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: voltage_sample_stale
+    minimum_front_clearance_m: 0.8
+    maximum_final_speed_m_s: 0.005
+- name: over_range
+  controller: voltage_guard
+  voltage_guard:
+    minimum_voltage_v: 8
+    maximum_sample_age_s: 0.01
+  scenario:
+    left_motor: left_motor
+    right_motor: right_motor
+    battery: battery
+    mcu: esp32
+    ultrasonic: ultrasonic
+    ideal_echo_interface: echo_level_shifter
+    wall_distance_m: 1.0
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: *id001
+    imu: null
+    serial: null
+    encoder_faults: *id002
+    duration_s: 3.0
+    step_s: 0.001
+    poll_every_steps: 61
+    control_every_steps: 20
+    brake_threshold_m: 0.6
+    stopped_speed_m_s: 0.005
+    timeout_action: brake
+    voltage_monitor:
+      full_scale_v: 5
+      resolution_bits: 12
+      conversion_s: 0.003
+      poll_every_steps: 10
+  acceptance:
+    expected_status: stopped_before_wall
+    expected_brake_reason: voltage_monitor_range
+    minimum_front_clearance_m: 0.8
+    maximum_final_speed_m_s: 0.005

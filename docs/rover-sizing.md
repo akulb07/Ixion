@@ -144,7 +144,8 @@ For a time history, use the [closed-loop incline fixture](rover-inclines.md).
 Only forward speed, nonnegative acceleration and a constant uphill grade are
 supported. Reverse, downhill braking, turning, rolling resistance, load transfer,
 wheel slip and temperature are still outside this sizing model. VCC and auxiliary
-current are explicit allowances; the current rover runtime doesn't yet accept
-those allowances, so matching that runtime requires its existing 3.3 V/zero-auxiliary
-conditions. The default 0.5 Ω driver resistance remains an assumption. Real
+current are explicit allowances. The [moving rover](rover-power.md) and incremental
+runtime now accept the same VCC and auxiliary-current inputs; match sizing `soc`
+to the moving scenario's `initial_soc` when comparing initial conditions. The
+default 0.5 Ω driver resistance remains an assumption. Real
 measurements and exact part variants are still needed to validate predictions.

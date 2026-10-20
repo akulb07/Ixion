@@ -17,7 +17,11 @@ from .board_outputs import TB6612BoardOutputs
 from .board_ultrasonic import UltrasonicBoardIO, resolve_ultrasonic_wiring
 from .encoder_faults import EncoderCounterReads, EncoderCountFault
 from .motor import MotorDatasheet
-from .motor_wiring import resolve_motor_connection, resolve_rover_wheels
+from .motor_wiring import (
+    require_direct_driver_supply,
+    resolve_motor_connection,
+    resolve_rover_wheels,
+)
 from .mounted_encoder import resolve_mounted_encoder
 from .powertrain import MotorChannel, Powertrain
 from .project import Identifier, RobotProject
@@ -32,9 +36,11 @@ from .rover_firmware import (
     RoverFirmware,
 )
 from .rover_imu import RoverIMU, RoverIMUConfig
+from .rover_power import RoverPowerConditions, RoverPowerInterval, RoverPowerResponse
 from .serial_console import SerialConsole, SerialConsoleConfig
 from .signal_clock import SignalClock, SignalEdge
 from .ultrasonic import UltrasonicConfig
+from .voltage_monitor import VoltageMonitor, VoltageMonitorConfig
 
 
 class RoverSerialConfig(Schema):
@@ -43,7 +49,8 @@ class RoverSerialConfig(Schema):
     imu_every_readings: int = Field(strict=True, gt=0, le=10_000, default=10)
 
 
-class RoverBrakeConfig(Schema):
+class RoverBrakeConfig(RoverPowerConditions):
+    voltage_monitor: VoltageMonitorConfig | None = None
     left_motor: Identifier = "left_motor"
     right_motor: Identifier = "right_motor"
     battery: Identifier = "battery"
@@ -72,9 +79,22 @@ class RoverBrakeConfig(Schema):
     @model_serializer(mode="wrap")
     def preserve_level_encoding(self, handler):
         data = handler(self)
+        if self.voltage_monitor is None:
+            data.pop("voltage_monitor", None)
         if self.grade_rad == 0:
             data.pop("grade_rad", None)
+        for name, field in RoverPowerConditions.model_fields.items():
+            if getattr(self, name) == field.default:
+                data.pop(name, None)
         return data
+
+    @property
+    def records_power(self):
+        return not self.uses_default_power or self.voltage_monitor is not None
+
+    @property
+    def records_intervals(self):
+        return self.voltage_limit_action != "end" or self.voltage_monitor is not None
 
     @model_validator(mode="after")
     def check_fixture(self):
@@ -184,8 +204,7 @@ def run_rover_brake(
         pwm={pins["PWMA"]: 1, pins["PWMB"]: 1},
     )
     parts = {c.id: c for c in project.components}
-    if config.battery not in parts:
-        raise ValueError("selected battery does not exist")
+    require_direct_driver_supply(project, connections[0].driver, config.battery)
     body = RollingBody(
         total_mass_kg=project.assembly.total_mass_kg,
         wheel_radius_m=project.assembly.wheel_radius_m,
@@ -227,6 +246,7 @@ def run_rover_brake(
     )
     serial = None if config.serial is None else SerialConsole(clock, config.serial.console)
     imu_log_count = 0
+    voltage_log_count = 0
 
     def emit_log(event):
         if serial is None:
@@ -274,7 +294,9 @@ def run_rover_brake(
     sonar_pin_events = []
     rising = pending = brake_time = brake_distance = None
     stop_time = contact_time = None
-    energy = 0.0
+    energy = auxiliary_energy = 0.0
+    power_limit_event = None
+    power_response = None
     peak_current = 0.0
     power_diagnostics = set()
 
@@ -285,6 +307,19 @@ def run_rover_brake(
             left_encoder_count=observed["left"],
             right_encoder_count=observed["right"],
         )
+
+    def voltage_reading(observation):
+        nonlocal voltage_log_count
+        voltage_log_count += 1
+        if (voltage_log_count - 1) % 10 == 0:
+            emit_log({"event": "voltage_read", **observation.model_dump(mode="json")})
+        controller.on_voltage(observation, firmware_inputs())
+
+    voltage_monitor = (
+        None
+        if config.voltage_monitor is None
+        else VoltageMonitor(clock, config.voltage_monitor, voltage_reading)
+    )
 
     def observe_range(time, status, distance):
         controller.on_range(
@@ -366,7 +401,7 @@ def run_rover_brake(
 
     clock.on_change(sonar_wiring.echo_pin, capture)
 
-    def record(sample, interval_energy_j=0.0):
+    def record(sample, interval_energy_j=0.0, interval_auxiliary_energy_j=0.0, interval_start=None):
         nonlocal peak_current
         point = sample.shaft.point
         peak_current = max(peak_current, point.battery.current_a)
@@ -397,6 +432,33 @@ def run_rover_brake(
                 "soc": sample.shaft.state.soc,
                 "contact_force_per_wheel_n": sample.contact_force_per_wheel_n,
                 "traction_limit_per_wheel_n": sample.traction_limit_per_wheel_n,
+                **(
+                    {}
+                    if not config.records_intervals
+                    else {
+                        "interval_start": None
+                        if interval_start is None
+                        else RoverPowerInterval(
+                            time_s=interval_start.shaft.time_s,
+                            speed_m_s=interval_start.speed_m_s,
+                            soc=interval_start.shaft.state.soc,
+                            pack_current_a=interval_start.shaft.point.battery.current_a,
+                            pack_voltage_v=interval_start.shaft.point.battery.terminal_voltage_v,
+                            pack_power_w=interval_start.shaft.point.battery.power_w,
+                            auxiliary_power_w=interval_start.shaft.point.auxiliary_power_w,
+                            driver_modes=tuple(c.mode for c in interval_start.shaft.point.channels),
+                        ).model_dump(mode="json"),
+                    }
+                ),
+                **(
+                    {}
+                    if not config.records_power
+                    else {
+                        "auxiliary_current_a": point.auxiliary_current_a,
+                        "auxiliary_power_w": point.auxiliary_power_w,
+                        "interval_auxiliary_energy_j": interval_auxiliary_energy_j,
+                    }
+                ),
             }
         )
 
@@ -404,7 +466,9 @@ def run_rover_brake(
         nonlocal brake_time, brake_distance
         previous_duty = outputs.inputs("A").pwm_duty
         command = controller.tick(firmware_inputs())
-        if command == "brake" and brake_time is None:
+        if power_response is not None:
+            pass  # The declared driver override remains latched for this run.
+        elif command == "brake" and brake_time is None:
             brake_time, brake_distance = clock.time_s, distance
             outputs.write(
                 digital={pins["AIN2"]: True, pins["BIN2"]: True},
@@ -438,8 +502,38 @@ def run_rover_brake(
                 "drive_request_time_s": controller.drive_request_time_s,
                 "encoder_counts": counter_reads.read(),
                 "decoded_encoder_counts": dict(decoded_counts),
+                **(
+                    {}
+                    if config.voltage_limit_action == "end"
+                    else {
+                        "motor_override": None if power_response is None else power_response.action
+                    }
+                ),
             }
         )
+
+    def apply_power_response():
+        nonlocal power_response
+        brake = config.voltage_limit_action == "brake"
+        outputs.write(
+            digital={
+                pins["STBY"]: True,
+                pins["AIN1"]: brake,
+                pins["AIN2"]: brake,
+                pins["BIN1"]: brake,
+                pins["BIN2"]: brake,
+            },
+            pwm={pins["PWMA"]: 1, pins["PWMB"]: 1},
+        )
+        power_response = RoverPowerResponse(
+            time_s=runtime.time_s,
+            action=config.voltage_limit_action,
+            distance_m=runtime.sample.distance_m,
+            terminal_energy_j=energy,
+            motor_inputs=tuple(c.motor_inputs(outputs.inputs(c.channel)) for c in connections),
+        )
+        emit_log({"event": "power_limit", **power_limit_event.model_dump(mode="json")})
+        emit_log({"event": "power_response", **power_response.model_dump(mode="json")})
 
     # Establish the first command before computing initial current and traction.
     control(0.0)
@@ -454,7 +548,13 @@ def run_rover_brake(
             for c in connections
         ),
     )
-    runtime = RollingRuntime(system, BatteryState(), body)
+    runtime = RollingRuntime(
+        system,
+        BatteryState(soc=config.initial_soc),
+        body,
+        vcc_v=config.vcc_v,
+        auxiliary_current_a=config.auxiliary_current_a,
+    )
     start = runtime.sample
     if config.grade_rad > 0 and start.acceleration_m_s2 < 0:
         raise ValueError(
@@ -470,6 +570,8 @@ def run_rover_brake(
             sonar.trigger_pulse(sonar_wiring.trigger_pin, config.sensor.minimum_trigger_s)
         if imu is not None and index % config.imu.poll_every_steps == 0:
             imu.poll()
+        if voltage_monitor is not None and index % config.voltage_monitor.poll_every_steps == 0:
+            voltage_monitor.poll(start.shaft.point.battery.terminal_voltage_v)
         if config.serial is not None and index % config.serial.status_every_steps == 0:
             emit_log(
                 {
@@ -478,44 +580,86 @@ def run_rover_brake(
                     "encoder_counts": counter_reads.read(),
                 }
             )
-        elapsed = min(config.duration_s, (index + 1) * config.step_s) - runtime.time_s
-        if elapsed <= 0:
-            break
-        clearance = config.wall_distance_m - config.front_offset_m - start.distance_m
-        contact = start.speed_m_s > 0 and start.speed_m_s * elapsed >= clearance
-        if contact:
-            elapsed = clearance / start.speed_m_s
-        if elapsed <= 0:
-            contact_time = runtime.time_s
-            break
-        result = runtime.step(
-            elapsed, tuple(c.motor_inputs(outputs.inputs(c.channel)) for c in connections)
-        )
-        if result.end.speed_m_s < 0:
-            if config.grade_rad > 0:
-                raise ValueError(
-                    "inclined rover reached rollback; reduce step_s if braking crossed the stop threshold, or review the drive torque and grade; rollback and hill holding are unsupported"
+        interval_end = min(config.duration_s, (index + 1) * config.step_s)
+        while runtime.time_s < interval_end:
+            start = runtime.sample
+            elapsed = interval_end - runtime.time_s
+            clearance = config.wall_distance_m - config.front_offset_m - start.distance_m
+            contact = start.speed_m_s > 0 and start.speed_m_s * elapsed >= clearance
+            if contact:
+                elapsed = clearance / start.speed_m_s
+            if elapsed <= 0:
+                contact_time = runtime.time_s
+                break
+            commands = tuple(c.motor_inputs(outputs.inputs(c.channel)) for c in connections)
+            new_limit = None
+            if config.minimum_pack_voltage_v is None or power_response is not None:
+                result = runtime.step(elapsed, commands)
+            else:
+                limited = runtime.step_until_voltage_limit(
+                    elapsed, config.minimum_pack_voltage_v, commands
                 )
-            raise ValueError("forward rover fixture reversed numerically; reduce step_s")
-        _schedule_encoders(clock, mounted, input_pin_map, result)
-        if imu is not None:
-            clock.call_at(runtime.time_s, lambda sample=result.end: imu.capture(sample))
-        clock.run_until(runtime.time_s)
-        interval_energy = finite(
-            result.start.shaft.point.battery.power_w * elapsed, "interval energy"
-        )
-        energy = finite(energy + interval_energy, "rover terminal energy")
-        peak_current = max(peak_current, result.start.shaft.point.battery.current_a)
-        record(result.end, interval_energy)
-        if contact:
-            contact_time = runtime.time_s
-            break
-        if brake_time is not None and result.end.speed_m_s <= config.stopped_speed_m_s:
-            stop_time = runtime.time_s
+                new_limit = limited.event
+                power_limit_event = new_limit
+                result = limited.step
+            if result is not None:
+                elapsed = result.end.shaft.time_s - result.start.shaft.time_s
+                if result.end.speed_m_s < 0:
+                    if config.grade_rad > 0:
+                        raise ValueError(
+                            "inclined rover reached rollback; reduce step_s if braking crossed the stop threshold, or review the drive torque and grade; rollback and hill holding are unsupported"
+                        )
+                    raise ValueError("forward rover fixture reversed numerically; reduce step_s")
+                _schedule_encoders(clock, mounted, input_pin_map, result)
+                if imu is not None:
+                    clock.call_at(runtime.time_s, lambda sample=result.end: imu.capture(sample))
+                clock.run_until(runtime.time_s)
+                interval_energy = finite(
+                    result.start.shaft.point.battery.power_w * elapsed, "interval energy"
+                )
+                energy = finite(energy + interval_energy, "rover terminal energy")
+                interval_auxiliary_energy = finite(
+                    result.start.shaft.point.auxiliary_power_w * elapsed,
+                    "interval auxiliary energy",
+                )
+                auxiliary_energy = finite(
+                    auxiliary_energy + interval_auxiliary_energy, "auxiliary terminal energy"
+                )
+                peak_current = max(peak_current, result.start.shaft.point.battery.current_a)
+                record(result.end, interval_energy, interval_auxiliary_energy, result.start)
+            if new_limit is not None:
+                if config.voltage_limit_action == "end":
+                    break
+                apply_power_response()
+                if runtime.sample.speed_m_s <= config.stopped_speed_m_s:
+                    stop_time = runtime.time_s
+                    break
+                # The command change starts a new Euler interval, preserving the
+                # original control/poll grid and the unused part of this step.
+                continue
+            if contact:
+                contact_time = runtime.time_s
+                break
+            if (
+                brake_time is not None or power_response is not None
+            ) and runtime.sample.speed_m_s <= config.stopped_speed_m_s:
+                stop_time = runtime.time_s
+                break
+        if (
+            contact_time is not None
+            or stop_time is not None
+            or (power_limit_event is not None and power_response is None)
+        ):
             break
     status = (
-        "wall_contact"
+        "power_limit_reached"
+        if power_limit_event is not None and power_response is None
+        else "wall_contact"
         if contact_time is not None
+        else "stopped_after_power_limit"
+        if power_response is not None and stop_time is not None
+        else "power_response_incomplete"
+        if power_response is not None
         else "stopped_before_wall"
         if stop_time is not None
         else "brake_triggered"
@@ -524,9 +668,21 @@ def run_rover_brake(
         if controller.request is not None
         else "completed_without_brake"
     )
+    if power_limit_event is not None and power_response is None:
+        emit_log({"event": "power_limit", **power_limit_event.model_dump(mode="json")})
     emit_log({"event": "run_end", "status": status})
     return {
-        "schema_version": 7 if config.grade_rad == 0 else 8,
+        "schema_version": 12
+        if config.voltage_monitor is not None
+        else 11
+        if config.voltage_limit_action != "end"
+        else 10
+        if config.minimum_pack_voltage_v is not None
+        else 9
+        if not config.uses_default_power
+        else 7
+        if config.grade_rad == 0
+        else 8,
         "experiment": "straight_line_wall_brake",
         "result_type": "estimate",
         "status": status,
@@ -553,6 +709,25 @@ def run_rover_brake(
         "control_decisions": decisions,
         "samples": samples,
         "pending_measurement": pending,
+        **({} if voltage_monitor is None else {"voltage_monitor": voltage_monitor.report()}),
+        **(
+            {}
+            if not config.records_intervals
+            else {
+                "power_response": None
+                if power_response is None
+                else power_response.model_dump(mode="json")
+            }
+        ),
+        **(
+            {}
+            if config.minimum_pack_voltage_v is None and config.voltage_monitor is None
+            else {
+                "power_limit_event": None
+                if power_limit_event is None
+                else power_limit_event.model_dump(mode="json"),
+            }
+        ),
         "metrics": {
             "detection_time_s": controller.detection_time_s,
             "brake_command_time_s": brake_time,
@@ -570,19 +745,70 @@ def run_rover_brake(
             "final_front_clearance_m": samples[-1]["front_clearance_m"],
             "terminal_energy_j": energy,
             "peak_sampled_pack_current_a": peak_current,
+            **(
+                {}
+                if not config.records_intervals
+                else {
+                    "distance_after_power_limit_m": None
+                    if power_response is None
+                    else runtime.sample.distance_m - power_response.distance_m,
+                    "energy_after_power_limit_j": None
+                    if power_response is None
+                    else energy - power_response.terminal_energy_j,
+                    "power_response_elapsed_s": None
+                    if power_response is None
+                    else runtime.time_s - power_response.time_s,
+                }
+            ),
+            **(
+                {}
+                if not config.records_power
+                else {"auxiliary_terminal_energy_j": auxiliary_energy}
+            ),
+            **(
+                {}
+                if config.minimum_pack_voltage_v is None and config.voltage_monitor is None
+                else {
+                    "power_limit_time_s": None
+                    if power_limit_event is None
+                    else power_limit_event.time_s,
+                }
+            ),
         },
         "diagnostics": [d.model_dump() for d in outputs.diagnostics],
         "power_diagnostics": sorted(power_diagnostics),
         "limitations": [
+            *(
+                []
+                if voltage_monitor is None
+                else [
+                    "Ideal sampled pack-voltage fixture with explicit quantization and conversion latency; captures the last committed physics endpoint; no MCU ADC, divider circuit, noise, calibration error or sensor power consumption"
+                    if config.voltage_monitor.errors is None
+                    else "Sampled pack-voltage fixture with declared gain, offset and bounded repeatable noise before quantization; captures the last committed physics endpoint; no MCU ADC, divider circuit, input loading, drift or sensor power consumption"
+                ]
+            ),
             "Constant nonnegative grade, identical motors, equal commands, positive wheel orientation, no slip or turning; driven normal-load fraction is prescribed without load transfer",
             "Distances and speeds follow the inclined lane; one wall is perpendicular to travel; front and sensor offsets are explicit assumptions",
             "Range is sampled at trigger time; no beam shape, acoustic reflection or motion during flight",
             "Logical sonar signals follow declared nets; any selected echo interface is ideal, with no analog conversion or delay",
             "Encoder pins and driver commands adapt to project wiring; host Python, no ESP32 binary execution",
             "Host firmware callbacks run synchronously without CPU timing or process isolation; first brake request latches until the next control tick",
-            "Battery and 3.3 V logic supplies are explicit; regulator and power nets are not executed",
+            (
+                "Battery charge, constant pack-side auxiliary current and driver VCC are explicit inputs; auxiliary load persists during braking; regulator, MCU power and BMS behavior are not executed"
+                if not config.uses_default_power
+                else "Battery and 3.3 V logic supplies are explicit; regulator and power nets are not executed"
+            ),
             "Stopped means the configured forward speed threshold; no rolling resistance, static friction, rollback or hill-holding model",
             "First wall contact ends the estimate with its approach speed; impact forces are not modeled",
             "Explicit Euler with averaged PWM; verify convergence and physical measurements before relying on estimates",
+            *(
+                []
+                if config.minimum_pack_voltage_v is None
+                else [
+                    "Declared voltage limit ends the estimate at a command boundary or the above-threshold side of a bounded Euler-step crossing; no BMS disconnection, coast-down, stopping or restart is simulated"
+                    if config.voltage_limit_action == "end"
+                    else "Declared voltage limit latches an ideal coast/brake driver override at the bounded crossing; pack, driver and logic supplies remain modeled and must stay within their supported ranges; no BMS disconnect, response delay or automatic restart",
+                ]
+            ),
         ],
     }

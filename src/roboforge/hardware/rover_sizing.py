@@ -12,7 +12,11 @@ from .battery import BatteryModel, BatteryState
 from .design_identity import canonical_sha256, project_identity
 from .driver import TB6612Driver
 from .motor import MotorDatasheet
-from .motor_wiring import resolve_motor_connection, resolve_rover_wheels
+from .motor_wiring import (
+    require_direct_driver_supply,
+    resolve_motor_connection,
+    resolve_rover_wheels,
+)
 from .project import Identifier, RobotProject
 from .rolling import RollingBody
 from .rolling_sizing import RollingDemand, size_rolling_drive
@@ -62,18 +66,8 @@ def size_rover(project: RobotProject, config: RoverSizingConfig) -> dict:
     if any(c.polarity != 1 for c in connections):
         raise ValueError("rover sizing requires positive motor lead polarity on both wheels")
     parts = {c.id: c for c in project.components}
-    if config.battery not in parts:
-        raise ValueError("selected battery does not exist")
     # This fixture consumes a direct pack supply, not an inferred regulator path.
-    net_for = {(e.component, e.pin): n.id for n in project.nets for e in n.endpoints}
-    if net_for.get((config.battery, "P")) is None or net_for.get(
-        (config.battery, "P")
-    ) != net_for.get((connections[0].driver, "VM")):
-        raise ValueError("selected battery P must directly supply the selected driver VM net")
-    if net_for.get((config.battery, "N")) is None or net_for.get(
-        (config.battery, "N")
-    ) != net_for.get((connections[0].driver, "GND")):
-        raise ValueError("selected battery N and driver GND must share a net")
+    require_direct_driver_supply(project, connections[0].driver, config.battery)
     models = tuple(MotorDatasheet.from_component(parts[name]).derive() for name in motors)
     if models[0] != models[1]:
         raise ValueError("rover sizing requires two identical motor models")

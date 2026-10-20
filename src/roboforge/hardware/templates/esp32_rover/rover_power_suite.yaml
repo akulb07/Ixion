@@ -1,0 +1,50 @@
+name: rover_power_conditions
+cases:
+- name: full_charge
+  controller: sonar
+  scenario:
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: {response_delay_s: 0.0002}
+    duration_s: 3
+    brake_threshold_m: 0.75
+  acceptance:
+    minimum_front_clearance_m: 0.4
+    maximum_peak_pack_current_a: 5
+- name: half_charge
+  controller: sonar
+  scenario:
+    initial_soc: 0.5
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: {response_delay_s: 0.0002}
+    duration_s: 3
+    brake_threshold_m: 0.75
+  acceptance:
+    minimum_front_clearance_m: 0.4
+    maximum_peak_pack_current_a: 5
+- name: half_charge_auxiliary_load
+  controller: sonar
+  scenario:
+    initial_soc: 0.5
+    auxiliary_current_a: 0.25
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor: {response_delay_s: 0.0002}
+    duration_s: 3
+    brake_threshold_m: 0.75
+  acceptance:
+    minimum_front_clearance_m: 0.4
+    maximum_peak_pack_current_a: 5

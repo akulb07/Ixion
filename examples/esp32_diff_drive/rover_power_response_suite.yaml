@@ -1,0 +1,63 @@
+# Assumed inputs. 8.39 V is a deliberately tight sag-screening trigger,
+# not a recommended LiPo cutoff or a physical BMS model.
+name: declared_voltage_response
+cases:
+- name: healthy_supply
+  scenario:
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+    duration_s: 3
+    brake_threshold_m: 0.75
+    minimum_pack_voltage_v: 6
+    voltage_limit_action: brake
+  acceptance:
+    minimum_front_clearance_m: 0.4
+    maximum_final_speed_m_s: 0.005
+    maximum_terminal_energy_j: 12
+- name: sag_brake
+  scenario:
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+    duration_s: 3
+    brake_threshold_m: 0.75
+    minimum_pack_voltage_v: 8.39
+    voltage_limit_action: brake
+  acceptance:
+    expected_status: stopped_after_power_limit
+    minimum_front_clearance_m: 0.7
+    maximum_final_speed_m_s: 0.005
+    maximum_power_limit_time_s: 1.1
+    maximum_distance_after_power_limit_m: 0.05
+    maximum_power_response_elapsed_s: 1.1
+- name: sag_coast
+  scenario:
+    wall_distance_m: 1
+    front_offset_m: 0.1
+    sensor_offset_m: 0.08
+    rotating_inertia_per_wheel_kg_m2: 0.002
+    friction_coefficient: 0.8
+    driven_weight_fraction: 0.8
+    sensor:
+      response_delay_s: 0.0002
+    duration_s: 3
+    brake_threshold_m: 0.75
+    minimum_pack_voltage_v: 8.39
+    voltage_limit_action: coast
+  acceptance:
+    expected_status: power_response_incomplete
+    minimum_front_clearance_m: 0.5
+    maximum_final_speed_m_s: 0.12
+    maximum_power_limit_time_s: 1.1
+    maximum_distance_after_power_limit_m: 0.3
